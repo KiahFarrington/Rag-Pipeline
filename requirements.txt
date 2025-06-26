@@ -1,0 +1,15 @@
+# Core RAG System Dependencies - Step by Step Build
+# We'll add these back as we implement each component
+
+# Text processing and NLP (for embeddings when we build them)
+# sentence-transformers>=2.2.2
+# numpy>=1.24.3
+
+# Vector database (when we implement proper similarity search)
+# faiss-cpu>=1.7.4
+
+# OpenAI API (when we implement the generator)
+# openai>=1.3.6
+
+# For now, we start with just basic Python - no external dependencies!
+# This makes it easier to focus on understanding each component 
