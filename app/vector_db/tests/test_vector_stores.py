@@ -8,6 +8,12 @@ This script demonstrates:
 """
 
 import numpy as np
+import sys
+import os
+
+# Add parent directory to path so we can import from the main app
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 from app.vector_db import FAISSVectorStore, ChromaDBVectorStore
 from app.embedders.huggingface_embedder import create_huggingface_embeddings
 

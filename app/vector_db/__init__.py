@@ -21,6 +21,10 @@ Example usage:
     # Both support the same interface
     doc_ids = vector_store.add_documents(texts, embeddings, metadata)
     results = vector_store.search(query_embedding, top_k=5)
+
+Testing:
+    # Run comprehensive tests for both vector stores
+    python app/vector_db/tests/test_vector_stores.py
 """
 
 # Import all vector store implementations
