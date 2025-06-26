@@ -47,7 +47,7 @@ def create_huggingface_embeddings(texts: list[str]) -> np.ndarray:
             inputs = _tokenizer(
                 text,
                 return_tensors="pt",
-                truncate=True,
+                truncation=True,
                 padding=True,
                 max_length=512
             )

@@ -1,31 +1,270 @@
-"""FAISS-based vector store - Building step by step."""
+"""FAISS-based vector store implementation.
+
+This module provides a high-performance vector database using Facebook's FAISS library
+for similarity search. FAISS is optimized for fast nearest neighbor search on dense vectors.
+"""
 
 import numpy as np
-from typing import List, Tuple
+import faiss
+import pickle
+import os
+from typing import List, Tuple, Dict, Any, Optional
+from .base_vector_store import BaseVectorStore
 
-class VectorStore:
-    """In-memory vector store - minimal implementation."""
+
+class FAISSVectorStore(BaseVectorStore):
+    """FAISS-based vector store for efficient similarity search.
     
-    def __init__(self):
-        """Initialize the vector store."""
-        self.chunks: List[str] = []  # Store original text chunks
-        print("VectorStore initialized - building step by step")
+    This implementation uses Facebook's FAISS library for fast approximate 
+    nearest neighbor search. It stores embeddings in memory and provides
+    high-performance similarity search capabilities.
     
-    def add_chunks(self, chunks: List[str], embeddings: np.ndarray) -> List[int]:
-        """Add text chunks and their embeddings to the store."""
-        # Placeholder implementation - just store chunks for now
-        self.chunks.extend(chunks)
-        return list(range(len(self.chunks) - len(chunks), len(self.chunks)))
+    Features:
+    - Fast similarity search using FAISS IndexFlatIP (inner product)
+    - In-memory storage with disk persistence
+    - Metadata support for document tracking
+    - Automatic normalization for cosine similarity
+    """
     
-    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> Tuple[List[str], List[float]]:
-        """Search for similar chunks."""
-        # Placeholder implementation - return first few chunks
-        return self.chunks[:top_k], [0.5] * min(top_k, len(self.chunks))
+    def __init__(self, embedding_dim: Optional[int] = None):
+        """Initialize the FAISS vector store.
+        
+        Args:
+            embedding_dim: Dimension of embeddings to store. If None, will be
+                          inferred from the first batch of embeddings added.
+        """
+        # Store embedding dimension (will be set when first documents are added)
+        self._embedding_dim = embedding_dim
+        
+        # FAISS index for similarity search (initialized when first documents added)
+        self._index: Optional[faiss.Index] = None
+        
+        # Store document texts and metadata parallel to FAISS index
+        self._documents: List[str] = []  # Document texts indexed by FAISS position
+        self._metadata: List[Dict[str, Any]] = []  # Document metadata indexed by FAISS position
+        self._document_ids: List[str] = []  # Unique IDs for each document
+        
+        # Counter for generating unique document IDs
+        self._next_doc_id = 0
+        
+        print(f"FAISSVectorStore initialized with embedding_dim={embedding_dim}")
+
+    def add_documents(
+        self, 
+        texts: List[str], 
+        embeddings: np.ndarray, 
+        metadata: Optional[List[Dict[str, Any]]] = None
+    ) -> List[str]:
+        """Add documents with their embeddings to the FAISS vector store.
+        
+        Args:
+            texts: List of document text chunks to store
+            embeddings: Numpy array of shape (n_documents, embedding_dim) with document embeddings
+            metadata: Optional list of metadata dictionaries for each document
+            
+        Returns:
+            List of unique document IDs assigned to the added documents
+        """
+        # Validate input parameters
+        if not isinstance(embeddings, np.ndarray):
+            raise TypeError("embeddings must be a numpy array")
+        
+        if len(texts) != embeddings.shape[0]:
+            raise ValueError(f"Number of texts ({len(texts)}) must match number of embeddings ({embeddings.shape[0]})")
+        
+        # Set embedding dimension if not already set
+        if self._embedding_dim is None:
+            self._embedding_dim = embeddings.shape[1]
+            print(f"Inferred embedding dimension: {self._embedding_dim}")
+        
+        # Validate embedding dimensions match expected
+        if embeddings.shape[1] != self._embedding_dim:
+            raise ValueError(f"Embedding dimension {embeddings.shape[1]} doesn't match expected {self._embedding_dim}")
+        
+        # Initialize FAISS index if this is the first batch of documents
+        if self._index is None:
+            # Use IndexFlatIP for inner product similarity (cosine when normalized)
+            self._index = faiss.IndexFlatIP(self._embedding_dim)
+            print(f"Initialized FAISS IndexFlatIP with dimension {self._embedding_dim}")
+        
+        # Normalize embeddings for cosine similarity search
+        embeddings_normalized = embeddings.astype(np.float32)
+        faiss.normalize_L2(embeddings_normalized)  # In-place normalization
+        
+        # Add embeddings to FAISS index
+        self._index.add(embeddings_normalized)
+        
+        # Generate unique document IDs for the new documents
+        new_doc_ids = []
+        for i in range(len(texts)):
+            doc_id = f"doc_{self._next_doc_id}"
+            new_doc_ids.append(doc_id)
+            self._next_doc_id += 1
+        
+        # Store document texts, metadata, and IDs
+        self._documents.extend(texts)
+        self._document_ids.extend(new_doc_ids)
+        
+        # Handle metadata (use empty dict if not provided)
+        if metadata is None:
+            metadata = [{}] * len(texts)
+        elif len(metadata) != len(texts):
+            raise ValueError(f"Number of metadata entries ({len(metadata)}) must match number of texts ({len(texts)})")
+        
+        self._metadata.extend(metadata)
+        
+        print(f"Added {len(texts)} documents to FAISS store. Total documents: {len(self._documents)}")
+        return new_doc_ids
+
+    def search(
+        self, 
+        query_embedding: np.ndarray, 
+        top_k: int = 5,
+        metadata_filter: Optional[Dict[str, Any]] = None
+    ) -> Tuple[List[str], List[float], List[Dict[str, Any]]]:
+        """Search for documents most similar to the query embedding.
+        
+        Args:
+            query_embedding: Numpy array of shape (embedding_dim,) representing the query
+            top_k: Maximum number of similar documents to return
+            metadata_filter: Optional dictionary to filter results by metadata fields
+            
+        Returns:
+            Tuple containing:
+            - List of document texts (most similar first)
+            - List of similarity scores (higher = more similar)
+            - List of metadata dictionaries for each result
+        """
+        # Check if any documents have been added
+        if self._index is None or len(self._documents) == 0:
+            raise RuntimeError("No documents have been added to the vector store")
+        
+        # Validate query embedding dimensions
+        if query_embedding.shape != (self._embedding_dim,):
+            raise ValueError(f"Query embedding shape {query_embedding.shape} doesn't match expected ({self._embedding_dim},)")
+        
+        # Normalize query embedding for cosine similarity
+        query_normalized = query_embedding.astype(np.float32).reshape(1, -1)
+        faiss.normalize_L2(query_normalized)
+        
+        # Perform similarity search using FAISS
+        # Note: FAISS returns squared L2 distances, but we normalized so this gives us cosine similarity
+        search_k = min(top_k, len(self._documents))  # Don't search for more docs than we have
+        similarities, indices = self._index.search(query_normalized, search_k)
+        
+        # Extract results from FAISS search
+        similarities = similarities[0]  # Remove batch dimension
+        indices = indices[0]  # Remove batch dimension
+        
+        # Collect results from document storage
+        result_texts = []
+        result_scores = []
+        result_metadata = []
+        
+        for i, idx in enumerate(indices):
+            # Skip invalid indices (FAISS can return -1 for no match)
+            if idx == -1:
+                continue
+                
+            # Get document data
+            doc_text = self._documents[idx]
+            doc_metadata = self._metadata[idx].copy()
+            similarity_score = float(similarities[i])
+            
+            # Apply metadata filter if provided
+            if metadata_filter is not None:
+                # Check if all filter criteria match the document metadata
+                matches_filter = all(
+                    key in doc_metadata and doc_metadata[key] == value
+                    for key, value in metadata_filter.items()
+                )
+                if not matches_filter:
+                    continue  # Skip this document
+            
+            # Add to results
+            result_texts.append(doc_text)
+            result_scores.append(similarity_score)
+            result_metadata.append(doc_metadata)
+            
+            # Stop if we have enough results
+            if len(result_texts) >= top_k:
+                break
+        
+        print(f"Search returned {len(result_texts)} results out of {len(self._documents)} total documents")
+        return result_texts, result_scores, result_metadata
+
+    def get_document_count(self) -> int:
+        """Get the total number of documents stored in the vector database."""
+        return len(self._documents)
     
-    def get_chunk_count(self) -> int:
-        """Get the total number of chunks stored."""
-        return len(self.chunks)
-    
-    def get_all_chunks(self) -> List[str]:
-        """Get all stored chunks."""
-        return self.chunks.copy() 
+    def get_embedding_dimension(self) -> Optional[int]:
+        """Get the dimension of embeddings stored in this vector store."""
+        return self._embedding_dim
+
+    def save(self, filepath: str) -> None:
+        """Save the FAISS vector store to disk for persistence.
+        
+        Args:
+            filepath: Path where the vector store should be saved (without extension)
+        """
+        if self._index is None:
+            raise RuntimeError("Cannot save empty vector store")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else '.', exist_ok=True)
+        
+        # Save FAISS index
+        faiss.write_index(self._index, f"{filepath}.faiss")
+        
+        # Save metadata and documents using pickle
+        store_data = {
+            'embedding_dim': self._embedding_dim,
+            'documents': self._documents,
+            'metadata': self._metadata,
+            'document_ids': self._document_ids,
+            'next_doc_id': self._next_doc_id
+        }
+        
+        with open(f"{filepath}.pkl", 'wb') as f:
+            pickle.dump(store_data, f)
+        
+        print(f"Saved FAISS vector store to {filepath}.faiss and {filepath}.pkl")
+
+    def load(self, filepath: str) -> None:
+        """Load a previously saved FAISS vector store from disk.
+        
+        Args:
+            filepath: Path to the saved vector store file (without extension)
+        """
+        # Check if files exist
+        faiss_file = f"{filepath}.faiss"
+        metadata_file = f"{filepath}.pkl"
+        
+        if not os.path.exists(faiss_file):
+            raise FileNotFoundError(f"FAISS index file not found: {faiss_file}")
+        if not os.path.exists(metadata_file):
+            raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
+        
+        # Load FAISS index
+        self._index = faiss.read_index(faiss_file)
+        
+        # Load metadata and documents
+        with open(metadata_file, 'rb') as f:
+            store_data = pickle.load(f)
+        
+        self._embedding_dim = store_data['embedding_dim']
+        self._documents = store_data['documents']
+        self._metadata = store_data['metadata']
+        self._document_ids = store_data['document_ids']
+        self._next_doc_id = store_data['next_doc_id']
+        
+        print(f"Loaded FAISS vector store from {filepath} with {len(self._documents)} documents")
+
+    def clear(self) -> None:
+        """Remove all documents from the vector store."""
+        self._index = None
+        self._documents.clear()
+        self._metadata.clear()
+        self._document_ids.clear()
+        self._next_doc_id = 0
+        print("Cleared all documents from FAISS vector store") 
