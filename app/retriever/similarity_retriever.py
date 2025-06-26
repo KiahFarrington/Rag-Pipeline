@@ -6,19 +6,19 @@ for a given query. This is the foundational retrieval method for RAG.
 
 from typing import List
 import numpy as np
-from app.vector_db.faiss_store import VectorStore
+from vector_db.base_vector_store import BaseVectorStore
 
-def retrieve_similar_chunks(vector_store: VectorStore, query_embedding: np.ndarray, top_k: int = 5) -> List[str]:
+def retrieve_similar_chunks(vector_store: BaseVectorStore, query_embedding: np.ndarray, top_k: int = 5) -> List[str]:
     """Retrieve similar chunks from the vector store.
     
-    This function will be implemented step by step.
+    This function retrieves the most relevant chunks based on vector similarity.
     """
-    # Placeholder implementation
-    chunks, scores = vector_store.search(query_embedding, top_k)
+    # Get search results (texts, scores, metadata)
+    chunks, scores, metadata = vector_store.search(query_embedding, top_k)
     return chunks
 
 def retrieve_with_context_expansion(
-    vector_store: VectorStore,
+    vector_store: BaseVectorStore,
     query_embedding: np.ndarray,
     top_k: int = 3,
     expand_context: bool = True
@@ -59,7 +59,7 @@ def retrieve_with_context_expansion(
     return initial_chunks
 
 def retrieve_with_reranking(
-    vector_store: VectorStore,
+    vector_store: BaseVectorStore,
     query_embedding: np.ndarray,
     query_text: str,
     initial_k: int = 10,

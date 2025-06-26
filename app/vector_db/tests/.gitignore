@@ -1,0 +1,8 @@
+# Test artifacts directory
+test_artifacts/
+
+# Temporary test database files
+*.faiss
+*.pkl
+test_chroma_db/
+test_db/ 

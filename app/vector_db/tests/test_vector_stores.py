@@ -101,7 +101,13 @@ def test_faiss_vector_store():
     
     # Test persistence
     print("\n💾 Testing save/load functionality...")
-    save_path = "test_faiss_store"
+    # Save test files in the tests directory
+    test_dir = os.path.dirname(__file__)
+    save_path = os.path.join(test_dir, "test_artifacts", "test_faiss_store")
+    
+    # Create artifacts directory if it doesn't exist
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    
     vector_store.save(save_path)
     
     # Create new store and load
@@ -127,10 +133,13 @@ def test_chromadb_vector_store():
     embeddings = create_huggingface_embeddings(documents)
     print(f"✅ Created embeddings with shape: {embeddings.shape}")
     
-    # Initialize ChromaDB vector store
+    # Initialize ChromaDB vector store - save in tests directory
+    test_dir = os.path.dirname(__file__)
+    chroma_persist_dir = os.path.join(test_dir, "test_artifacts", "test_chroma_db")
+    
     vector_store = ChromaDBVectorStore(
         collection_name="test_protocols",
-        persist_directory="./test_chroma_db"
+        persist_directory=chroma_persist_dir
     )
     
     # Clear any existing data for clean test

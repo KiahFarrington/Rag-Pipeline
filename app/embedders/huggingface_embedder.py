@@ -25,48 +25,41 @@ def create_huggingface_embeddings(texts: list[str]) -> np.ndarray:
     if not texts:
         return np.array([])
     
-    try:
-        # Import here to handle missing dependency gracefully
-        from transformers import AutoTokenizer, AutoModel
-        import torch
+    # Import here to avoid requiring dependency at module load time
+    from transformers import AutoTokenizer, AutoModel
+    import torch
+    
+    # Load free BERT model once (distilbert is smaller and faster)
+    if _tokenizer is None or _model is None:
+        model_name = "distilbert-base-uncased"
+        _tokenizer = AutoTokenizer.from_pretrained(model_name)
+        _model = AutoModel.from_pretrained(model_name)
         
-        # Load free BERT model once (distilbert is smaller and faster)
-        if _tokenizer is None or _model is None:
-            model_name = "distilbert-base-uncased"
-            _tokenizer = AutoTokenizer.from_pretrained(model_name)
-            _model = AutoModel.from_pretrained(model_name)
+        # Set model to evaluation mode
+        _model.eval()
+    
+    embeddings = []
+    
+    # Process each text
+    for text in texts:
+        # Tokenize text
+        inputs = _tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            padding=True,
+            max_length=512
+        )
+        
+        # Get embeddings without computing gradients
+        with torch.no_grad():
+            outputs = _model(**inputs)
             
-            # Set model to evaluation mode
-            _model.eval()
-        
-        embeddings = []
-        
-        # Process each text
-        for text in texts:
-            # Tokenize text
-            inputs = _tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=512
-            )
-            
-            # Get embeddings without computing gradients
-            with torch.no_grad():
-                outputs = _model(**inputs)
-                
-                # Use mean pooling of last hidden states
-                embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
-                embeddings.append(embedding.numpy())
-        
-        return np.array(embeddings)
-        
-    except ImportError:
-        # Fallback if transformers not installed
-        print("transformers not installed. Install with: pip install transformers torch")
-        # Return random embeddings as placeholder
-        return np.random.random((len(texts), 768))
+            # Use mean pooling of last hidden states
+            embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
+            embeddings.append(embedding.numpy())
+    
+    return np.array(embeddings)
 
 
 def create_single_huggingface_embedding(text: str) -> np.ndarray:

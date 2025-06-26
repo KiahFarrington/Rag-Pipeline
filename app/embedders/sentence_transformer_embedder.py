@@ -1,6 +1,7 @@
 """Sentence transformer embedder - Neural network based embeddings."""
 
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
 # Global model to avoid reloading
 _model = None
@@ -24,25 +25,15 @@ def create_sentence_embeddings(texts: list[str]) -> np.ndarray:
     if not texts:
         return np.array([])
     
-    try:
-        # Import here to handle missing dependency gracefully
-        from sentence_transformers import SentenceTransformer
-        
-        # Load pre-trained model once (small and fast)
-        # all-MiniLM-L6-v2 is lightweight but good quality
-        if _model is None:
-            _model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Create embeddings for all texts
-        embeddings = _model.encode(texts)
-        
-        return embeddings
-        
-    except ImportError:
-        # Fallback if sentence-transformers not installed
-        print("sentence-transformers not installed. Install with: pip install sentence-transformers")
-        # Return random embeddings as placeholder
-        return np.random.random((len(texts), 384))
+    # Load pre-trained model once (small and fast)
+    # all-MiniLM-L6-v2 is lightweight but good quality
+    if _model is None:
+        _model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    # Create embeddings for all texts
+    embeddings = _model.encode(texts)
+    
+    return embeddings
 
 
 def create_single_sentence_embedding(text: str) -> np.ndarray:
