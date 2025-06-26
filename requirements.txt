@@ -13,3 +13,19 @@ chromadb>=0.4.0
 
 # Data handling and utilities
 typing-extensions>=4.5.0 
+
+# AUGMENTATION DEPENDENCIES - Free LLM Options
+# Option 1: Ollama (completely free, local)
+requests>=2.31.0  # For Ollama API calls
+
+# Option 2: Hugging Face Transformers (free, local)
+transformers>=4.35.0  # Hugging Face transformers library
+torch>=2.0.0  # PyTorch for model inference
+# Alternative: tensorflow>=2.13.0  # TensorFlow instead of PyTorch
+
+# Option 3: Google Gemini (free tier)
+google-generativeai>=0.3.0  # Google's Gemini API
+
+# Additional generation utilities
+langchain>=0.0.340  # Optional: For prompt templates and chains
+tiktoken>=0.5.0  # Token counting for context management 
