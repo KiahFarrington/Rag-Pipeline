@@ -6,7 +6,8 @@ from sentence_transformers import SentenceTransformer
 # Global model to avoid reloading
 _model = None
 
-def create_sentence_embeddings(texts: list[str]) -> np.ndarray:
+
+def create_sentence_transformer_embeddings(texts: list[str]) -> np.ndarray:
     """Create sentence embeddings using SentenceTransformers.
     
     Parameters
@@ -36,7 +37,7 @@ def create_sentence_embeddings(texts: list[str]) -> np.ndarray:
     return embeddings
 
 
-def create_single_sentence_embedding(text: str) -> np.ndarray:
+def create_single_sentence_transformer_embedding(text: str) -> np.ndarray:
     """Create sentence embedding for a single text.
     
     Perfect for vector databases and single queries.
@@ -56,7 +57,7 @@ def create_single_sentence_embedding(text: str) -> np.ndarray:
         return np.zeros(384)
     
     # Use batch function with single text
-    embeddings = create_sentence_embeddings([text])
+    embeddings = create_sentence_transformer_embeddings([text])
     
     # Return first (only) embedding
     return embeddings[0] if len(embeddings) > 0 else np.zeros(384)

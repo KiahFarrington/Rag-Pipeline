@@ -47,7 +47,7 @@ class FAISSVectorStore(BaseVectorStore):
         # Counter for generating unique document IDs
         self._next_doc_id = 0
         
-        print(f"FAISSVectorStore initialized with embedding_dim={embedding_dim}")
+
 
     def add_documents(
         self, 
@@ -75,7 +75,7 @@ class FAISSVectorStore(BaseVectorStore):
         # Set embedding dimension if not already set
         if self._embedding_dim is None:
             self._embedding_dim = embeddings.shape[1]
-            print(f"Inferred embedding dimension: {self._embedding_dim}")
+
         
         # Validate embedding dimensions match expected
         if embeddings.shape[1] != self._embedding_dim:
@@ -85,7 +85,7 @@ class FAISSVectorStore(BaseVectorStore):
         if self._index is None:
             # Use IndexFlatIP for inner product similarity (cosine when normalized)
             self._index = faiss.IndexFlatIP(self._embedding_dim)
-            print(f"Initialized FAISS IndexFlatIP with dimension {self._embedding_dim}")
+
         
         # Normalize embeddings for cosine similarity search
         embeddings_normalized = embeddings.astype(np.float32)
@@ -113,7 +113,7 @@ class FAISSVectorStore(BaseVectorStore):
         
         self._metadata.extend(metadata)
         
-        print(f"Added {len(texts)} documents to FAISS store. Total documents: {len(self._documents)}")
+
         return new_doc_ids
 
     def search(
@@ -190,7 +190,7 @@ class FAISSVectorStore(BaseVectorStore):
             if len(result_texts) >= top_k:
                 break
         
-        print(f"Search returned {len(result_texts)} results out of {len(self._documents)} total documents")
+
         return result_texts, result_scores, result_metadata
 
     def get_document_count(self) -> int:
@@ -228,7 +228,7 @@ class FAISSVectorStore(BaseVectorStore):
         with open(f"{filepath}.pkl", 'wb') as f:
             pickle.dump(store_data, f)
         
-        print(f"Saved FAISS vector store to {filepath}.faiss and {filepath}.pkl")
+
 
     def load(self, filepath: str) -> None:
         """Load a previously saved FAISS vector store from disk.
@@ -258,7 +258,7 @@ class FAISSVectorStore(BaseVectorStore):
         self._document_ids = store_data['document_ids']
         self._next_doc_id = store_data['next_doc_id']
         
-        print(f"Loaded FAISS vector store from {filepath} with {len(self._documents)} documents")
+
 
     def clear(self) -> None:
         """Remove all documents from the vector store."""
@@ -267,4 +267,4 @@ class FAISSVectorStore(BaseVectorStore):
         self._metadata.clear()
         self._document_ids.clear()
         self._next_doc_id = 0
-        print("Cleared all documents from FAISS vector store") 
+ 

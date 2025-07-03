@@ -60,8 +60,7 @@ class ChromaDBVectorStore(BaseVectorStore):
         # Track embedding dimension (will be inferred from first batch)
         self._embedding_dim: Optional[int] = None
         
-        print(f"ChromaDBVectorStore initialized with collection '{collection_name}' in '{persist_directory}'")
-        print(f"Current collection size: {self._collection.count()} documents")
+
 
     def add_documents(
         self, 
@@ -89,7 +88,7 @@ class ChromaDBVectorStore(BaseVectorStore):
         # Set embedding dimension if not already set
         if self._embedding_dim is None:
             self._embedding_dim = embeddings.shape[1]
-            print(f"Inferred embedding dimension: {self._embedding_dim}")
+
         
         # Validate embedding dimensions match expected
         if embeddings.shape[1] != self._embedding_dim:
@@ -117,7 +116,7 @@ class ChromaDBVectorStore(BaseVectorStore):
         )
         
         current_count = self._collection.count()
-        print(f"Added {len(texts)} documents to ChromaDB. Total documents: {current_count}")
+
         return doc_ids
 
     def search(
@@ -177,7 +176,7 @@ class ChromaDBVectorStore(BaseVectorStore):
         # Ensure we have metadata for each result (ChromaDB can return None)
         metadatas = [meta if meta is not None else {} for meta in metadatas]
         
-        print(f"ChromaDB search returned {len(documents)} results out of {self._collection.count()} total documents")
+
         return documents, similarities, metadatas
 
     def get_document_count(self) -> int:
@@ -198,9 +197,7 @@ class ChromaDBVectorStore(BaseVectorStore):
             filepath: Path identifier for logging (not used by ChromaDB)
         """
         doc_count = self._collection.count()
-        print(f"ChromaDB vector store automatically persisted with {doc_count} documents")
-        print(f"Data location: {self._persist_directory}")
-        print(f"Collection: {self._collection_name}")
+
         
         # ChromaDB automatically persists, but we can force a manual persist if needed
         # This is mainly for demonstration - ChromaDB handles persistence automatically

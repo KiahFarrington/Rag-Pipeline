@@ -24,8 +24,8 @@ def chunk_by_fixed_length(text: str) -> list[str]:
     chunks = []
     chunk_size = 500
     for i in range(0, len(text), chunk_size):
-        chunk = text[i:i + chunk_size].strip()
-        if chunk:
+        chunk = text[i:i + chunk_size]
+        if chunk:  # Only check if chunk exists, don't strip whitespace
             chunks.append(chunk)
     
     # Return the chunks
