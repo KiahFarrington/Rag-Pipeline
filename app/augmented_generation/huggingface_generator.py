@@ -119,7 +119,7 @@ class HuggingFaceGenerator:
         self,
         query: str,
         retrieved_chunks: List[str],
-        max_context_length: int = 1000
+        max_context_length: int = 500
     ) -> Dict[str, Any]:
         """Generate response using retrieved chunks as context.
         
@@ -211,8 +211,8 @@ class HuggingFaceGenerator:
         current_length = 0  # Track total character count
         
         # Add chunks until we hit the length limit
-        for i, chunk in enumerate(chunks):
-            chunk_text = f"Source {i+1}: {chunk.strip()}"  # Format with source number
+        for chunk in chunks:
+            chunk_text = chunk.strip()  # Just use the chunk text directly
             
             # Check if adding this chunk would exceed limit
             if current_length + len(chunk_text) > max_length:
@@ -221,11 +221,11 @@ class HuggingFaceGenerator:
             context_parts.append(chunk_text)  # Add chunk to context
             current_length += len(chunk_text)  # Update length counter
         
-        # Join all context parts with newlines
-        return "\n\n".join(context_parts)
+        # Join all context parts with periods for better readability
+        return ". ".join(context_parts)
     
     def _create_prompt(self, query: str, context: str) -> str:
-        """Create a focused prompt for technical documentation Q&A.
+        """Create a simple, direct prompt for FLAN-T5.
         
         Args:
             query: User's question
@@ -234,17 +234,13 @@ class HuggingFaceGenerator:
         Returns:
             str: Complete prompt for the model
         """
-        # Create direct, focused prompt optimized for FLAN-T5
-        prompt = f"""Based on the following technical documentation, answer the question with specific technical details and step-by-step instructions when applicable.
-
-Documentation:
-{context}
+        # Use extremely simple format that FLAN-T5 handles well
+        prompt = f"""Context: {context}
 
 Question: {query}
-
-Technical Answer:"""
+Answer:"""
         
-        return prompt  # Return the simplified technical prompt
+        return prompt  # Return the simple prompt
 
 
 class SmallLanguageModelGenerator:
