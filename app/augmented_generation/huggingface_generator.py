@@ -225,7 +225,7 @@ class HuggingFaceGenerator:
         return "\n\n".join(context_parts)
     
     def _create_prompt(self, query: str, context: str) -> str:
-        """Create a well-structured prompt for the language model.
+        """Create a well-structured prompt for technical documentation Q&A.
         
         Args:
             query: User's question
@@ -234,17 +234,29 @@ class HuggingFaceGenerator:
         Returns:
             str: Complete prompt for the model
         """
-        # Create prompt optimized for instruction-following models
-        prompt = f"""Answer the following question based on the provided context.
+        # Create prompt optimized for technical documentation synthesis
+        prompt = f"""You are a helpful AI assistant answering technical questions using documentation retrieved from industrial protocol manuals.
 
-Context:
+You will receive a user question and several relevant excerpts from technical documents (retrieved chunks). Your job is to synthesize a clear, concise, and accurate answer, in your own words, using the most relevant parts of the retrieved content.
+
+Guidelines:
+- Focus only on the provided document excerpts. Do not hallucinate.
+- If the answer requires multiple steps or has dependencies (like steps to install a power supply), organize the answer clearly and sequentially.
+- Use plain English with accurate technical phrasing.
+- If multiple documents are referenced, make sure the answer still reads as one unified explanation.
+- Avoid just copying text from the excerpts. Summarize and explain it like you're teaching a smart engineer.
+
+If the retrieved chunks are irrelevant or insufficient to answer the question, say:
+"I couldn't find a complete answer based on the provided documents."
+
+Retrieved Document Excerpts:
 {context}
 
 Question: {query}
 
-Answer based only on the context provided above. Be concise and accurate."""
+Answer:"""
         
-        return prompt  # Return the complete prompt
+        return prompt  # Return the complete technical documentation prompt
 
 
 class SmallLanguageModelGenerator:

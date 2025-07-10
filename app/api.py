@@ -78,8 +78,8 @@ class RAGSystemState:
             'chunking_method': 'fixed_length',  # Use fixed length chunking for better PDF handling
             'embedding_method': 'tfidf',  # Use TF-IDF for much faster processing
             'retrieval_method': 'dense',  # Default to dense retrieval for simplicity
-            'generation_method': 'none',  # Disable text generation by default - retrieval only
-            'generation_model': 'none'  # No generation model needed
+            'generation_method': 'huggingface',  # Enable AI generation for synthesized answers
+            'generation_model': 'google/flan-t5-base'  # Use FLAN-T5 for technical Q&A
         }
         
         # Log the configuration being loaded for debugging
