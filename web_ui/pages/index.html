@@ -537,6 +537,7 @@
 
         // Display query results
         function displayQueryResult(result) {
+            console.log('Query result received:', result);
             const resultDiv = document.getElementById('queryResult');
             
             let html = '<div class="response-area">';
@@ -560,10 +561,12 @@
 
             // Show retrieved chunks
             if (result.retrieved_chunks && result.retrieved_chunks.length > 0) {
+                console.log('Found', result.retrieved_chunks.length, 'chunks to display');
                 html += '<div class="sources">';
                 html += '<h4 style="margin-bottom: 15px; color: #374151;">Source Information:</h4>';
                 
                 result.retrieved_chunks.forEach((chunk, index) => {
+                    console.log(`Chunk ${index + 1}:`, chunk.text.substring(0, 100) + '...');
                     html += '<div class="source-chunk">';
                     html += `<div class="score">Relevance: ${(chunk.similarity_score * 100).toFixed(1)}%</div>`;
                     html += `<div>${chunk.text}</div>`;
@@ -571,6 +574,8 @@
                 });
                 
                 html += '</div>';
+            } else {
+                console.log('No chunks found in result');
             }
 
             html += '</div>';

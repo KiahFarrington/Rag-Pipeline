@@ -75,7 +75,7 @@ class RAGSystemState:
         """Initialize RAG system with default configuration."""
         # Default configuration - good balance of speed and quality
         self.config = {
-            'chunking_method': 'semantic',  # Default to semantic chunking for better context
+            'chunking_method': 'fixed_length',  # Use fixed length chunking for better PDF handling
             'embedding_method': 'sentence_transformer',  # Default to neural embeddings for quality
             'retrieval_method': 'dense',  # Default to dense retrieval for simplicity
             'generation_method': 'none',  # Disable text generation by default - retrieval only
