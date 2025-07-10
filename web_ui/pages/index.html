@@ -490,12 +490,16 @@
         // Query documents
         async function queryDocuments() {
             const query = document.getElementById('queryInput').value.trim();
+            const queryButton = document.querySelector('button[onclick="queryDocuments()"]');
             
             if (!query) {
                 showMessage('Please enter a question', 'error', 'queryResult');
                 return;
             }
 
+            // Disable button and show processing state
+            queryButton.disabled = true;
+            queryButton.textContent = 'Processing...';
             showMessage('Processing query...', 'loading', 'queryResult');
 
             try {
@@ -532,6 +536,10 @@
                 }
             } catch (error) {
                 showMessage(`Network error: ${error.message}`, 'error', 'queryResult');
+            } finally {
+                // Re-enable button
+                queryButton.disabled = false;
+                queryButton.textContent = 'Submit Query';
             }
         }
 

@@ -82,6 +82,9 @@ class RAGSystemState:
             'generation_model': 'none'  # No generation model needed
         }
         
+        # Log the configuration being loaded for debugging
+        logger.info(f"RAG system initialized with configuration: {self.config}")  # Debug log for config
+        
         # System data storage
         self.documents = {}  # Store processed documents by ID
         self.vector_store = FAISSVectorStore()  # Initialize vector database
@@ -276,10 +279,15 @@ def update_config():
 
 def create_chunks_with_method(text: str, method: str) -> List[str]:
     """Create text chunks using the specified method."""
+    # Log the chunking method being used for debugging
+    logger.info(f"Using chunking method: {method}")  # Debug log to see actual method
+    
     # Choose chunking method based on configuration
     if method == 'semantic':
+        logger.info("Performing semantic chunking")  # Debug log for semantic
         return chunk_by_semantics(text)  # Use semantic chunking for better context
     else:
+        logger.info("Performing fixed-length chunking")  # Debug log for fixed-length
         return chunk_by_fixed_length(text)  # Use fixed-length chunking for speed
 
 def create_embeddings_with_method(chunks: List[str], method: str):
