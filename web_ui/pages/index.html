@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Intelligence Platform</title>
+    <style>
+        /* Modern, clean styling for the RAG interface */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #374151;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #2563eb;
+            background: #dbeafe;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .query-section input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .query-section input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .response-area {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .response-area h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .generated-response {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            line-height: 1.6;
+        }
+
+        .sources {
+            margin-top: 20px;
+        }
+
+        .source-chunk {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #e5e7eb;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .score {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-healthy { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+
+        .loading {
+            background: #f0f9ff;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #1e40af;
+            margin-top: 15px;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #dc2626;
+            margin-top: 15px;
+        }
+
+        .success {
+            background: #f0fdf4;
+            color: #16a34a;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #16a34a;
+            margin-top: 15px;
+        }
+
+        .system-status {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with navigation -->
+        <div class="header">
+            <h1>Document Intelligence Platform</h1>
+            <p>Advanced document analysis and intelligent question answering</p>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">Home</a>
+                <a href="/settings" class="nav-btn">Settings</a>
+                <button class="nav-btn" onclick="checkHealth()">System Status</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- System Status -->
+            <div id="systemStatus" class="system-status">
+                <span class="status-indicator status-warning"></span>
+                Checking system status...
+            </div>
+
+            <!-- Document Upload Section -->
+            <div class="section">
+                <h2>Document Upload</h2>
+                
+                <!-- File Upload Option -->
+                <div class="upload-area" id="fileUploadArea" style="margin-bottom: 20px;">
+                    <p style="margin-bottom: 15px; color: #6b7280;">Upload documents (.txt, .pdf, .docx):</p>
+                    <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="margin-bottom: 15px; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; width: 100%;">
+                    <button class="btn" onclick="uploadFile()">
+                        Upload & Process File
+                    </button>
+                </div>
+
+                <!-- Text Input Option -->
+                <div class="upload-area" id="textUploadArea">
+                    <p style="margin-bottom: 15px; color: #6b7280;">Or paste your document text here:</p>
+                    <textarea id="documentText" placeholder="Paste your document content here... (articles, research papers, manuals, etc.)"></textarea>
+                    <br><br>
+                    <button class="btn" onclick="ingestTextDocument()">
+                        Process Text
+                    </button>
+                </div>
+                <div id="uploadResult"></div>
+            </div>
+
+            <!-- Query Section -->
+            <div class="section">
+                <h2>Query Documents</h2>
+                <div class="query-section">
+                    <input type="text" id="queryInput" placeholder="Ask a question about your documents..." onkeypress="handleEnterKey(event)">
+                    <button class="btn" onclick="queryDocuments()">
+                        Submit Query
+                    </button>
+                </div>
+                <div id="queryResult"></div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <script>
+        // Global state management
+        let systemConfig = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth(); // Check system health on page load
+            loadSystemConfig(); // Load current configuration
+        });
+
+        // Load system configuration
+        async function loadSystemConfig() {
+            try {
+                const response = await fetch('/api/config');
+                systemConfig = await response.json();
+                console.log('System config loaded:', systemConfig);
+            } catch (error) {
+                console.error('Failed to load system config:', error);
+            }
+        }
+
+        // Check system health and update status
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                
+                const statusElement = document.getElementById('systemStatus');
+                
+                if (health.status === 'healthy') {
+                    statusElement.innerHTML = `
+                        <span class="status-indicator status-healthy"></span>
+                        System Online: ${health.documents_count} documents, ${health.chunks_count} chunks indexed
+                    `;
+                } else {
+                    statusElement.innerHTML = `
+                        <span class="status-indicator status-error"></span>
+                        System Error: ${health.error || 'Unknown error'}
+                    `;
+                }
+            } catch (error) {
+                const statusElement = document.getElementById('systemStatus');
+                statusElement.innerHTML = `
+                    <span class="status-indicator status-error"></span>
+                    Cannot connect to API server
+                `;
+            }
+        }
+
+        // Handle Enter key in query input
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                queryDocuments();
+            }
+        }
+
+
+
+        // Upload file
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const uploadButton = document.querySelector('button[onclick="uploadFile()"]');
+            
+            if (!file) {
+                showMessage('Please select a file to upload', 'error', 'uploadResult');
+                return;
+            }
+
+            const allowedTypes = ['.txt', '.pdf', '.docx'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExtension)) {
+                showMessage('Please select a .txt, .pdf, or .docx file', 'error', 'uploadResult');
+                return;
+            }
+
+            // Disable button and show processing
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Processing...';
+            showMessage('Processing file...', 'loading', 'uploadResult');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`File processed successfully. Created ${result.chunks_created} chunks.`, 'success', 'uploadResult');
+                    fileInput.value = '';
+                    checkHealth();
+                } else {
+                    showMessage(`Upload failed: ${result.error}`, 'error', 'uploadResult');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error', 'uploadResult');
+            } finally {
+                // Re-enable button
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Upload & Process File';
+            }
+        }
+
+        // Ingest text document
+        async function ingestTextDocument() {
+            const text = document.getElementById('documentText').value.trim();
+            const textButton = document.querySelector('button[onclick="ingestTextDocument()"]');
+            
+            if (!text) {
+                showMessage('Please enter some document text', 'error', 'uploadResult');
+                return;
+            }
+
+            // Disable button and show processing
+            textButton.disabled = true;
+            textButton.textContent = 'Processing...';
+            showMessage('Processing text...', 'loading', 'uploadResult');
+            
+            try {
+                const response = await fetch('/api/documents/ingest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Text processed successfully. Created ${result.chunks_created} chunks.`, 'success', 'uploadResult');
+                    document.getElementById('documentText').value = '';
+                    checkHealth();
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error', 'uploadResult');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error', 'uploadResult');
+            } finally {
+                // Re-enable button
+                textButton.disabled = false;
+                textButton.textContent = 'Process Text';
+            }
+        }
+
+        // Query documents
+        async function queryDocuments() {
+            const query = document.getElementById('queryInput').value.trim();
+            
+            if (!query) {
+                showMessage('Please enter a question', 'error', 'queryResult');
+                return;
+            }
+
+            showMessage('Processing query...', 'loading', 'queryResult');
+
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        query: query,
+                        top_k: 5,
+                        use_generation: true
+                    })
+                });
+
+                // Check if response is JSON before parsing
+                const contentType = response.headers.get('content-type');
+                let result;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    // Handle non-JSON responses (like HTML error pages)
+                    const textResponse = await response.text();
+                    result = { 
+                        error: `Server returned unexpected response: ${response.status} ${response.statusText}. Response: ${textResponse.substring(0, 200)}...` 
+                    };
+                }
+
+                if (response.ok) {
+                    displayQueryResult(result);
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error', 'queryResult');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error', 'queryResult');
+            }
+        }
+
+        // Display query results
+        function displayQueryResult(result) {
+            const resultDiv = document.getElementById('queryResult');
+            
+            let html = '<div class="response-area">';
+            html += `<h3>Results for: "${result.query}"</h3>`;
+
+            // Show generated response if available
+            if (result.generated_response) {
+                html += '<div class="generated-response">';
+                html += '<h4 style="margin-bottom: 10px; color: #2563eb;">AI Generated Response:</h4>';
+                html += `<p>${result.generated_response}</p>`;
+                if (result.model_used) {
+                    html += `<p style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">Model: ${result.model_used}</p>`;
+                }
+                html += '</div>';
+            } else {
+                html += '<div style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px;">';
+                html += '<h4 style="margin-bottom: 10px; color: #374151;">Document Search Results:</h4>';
+                html += '<p style="color: #6b7280; margin: 0;">Showing relevant information from your uploaded documents. Enable AI generation in Settings for summarized responses.</p>';
+                html += '</div>';
+            }
+
+            // Show retrieved chunks
+            if (result.retrieved_chunks && result.retrieved_chunks.length > 0) {
+                html += '<div class="sources">';
+                html += '<h4 style="margin-bottom: 15px; color: #374151;">Source Information:</h4>';
+                
+                result.retrieved_chunks.forEach((chunk, index) => {
+                    html += '<div class="source-chunk">';
+                    html += `<div class="score">Relevance: ${(chunk.similarity_score * 100).toFixed(1)}%</div>`;
+                    html += `<div>${chunk.text}</div>`;
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+            }
+
+            html += '</div>';
+            resultDiv.innerHTML = html;
+        }
+
+        // Show message helper
+        function showMessage(message, type, targetId) {
+            const target = document.getElementById(targetId);
+            target.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        // Show loading state
+        function showLoading() {
+            // Loading is now handled by showMessage with 'loading' type
+        }
+
+        // Hide loading state
+        function hideLoading() {
+            // Loading is now handled by showMessage
+        }
+
+        // Drag and drop functionality for file upload
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const textUploadArea = document.getElementById('textUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const textArea = document.getElementById('documentText');
+
+        // File upload area drag and drop
+        fileUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+
+        fileUploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        });
+
+        fileUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const allowedTypes = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                
+                if (allowedTypes.includes(file.type) || file.name.endsWith('.txt') || file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+                    fileInput.files = files;
+                    showMessage(`File "${file.name}" ready for upload. Click "Upload & Process File".`, 'success', 'uploadResult');
+                } else {
+                    showMessage('Please drop a .txt, .pdf, or .docx file', 'error', 'uploadResult');
+                }
+            }
+        });
+
+        // Text area drag and drop (for plain text files)
+        textUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            textUploadArea.classList.add('dragover');
+        });
+
+        textUploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            textUploadArea.classList.remove('dragover');
+        });
+
+        textUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            textUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        textArea.value = e.target.result;
+                    };
+                    reader.readAsText(file);
+                } else {
+                    showMessage('Please drop a text file (.txt) here, or use the file upload area above for PDF/DOCX files', 'error', 'uploadResult');
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

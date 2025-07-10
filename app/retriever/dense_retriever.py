@@ -6,7 +6,7 @@ and cosine similarity. It's fast and works well for semantic queries.
 
 from typing import List, Tuple
 import numpy as np
-from vector_db.base_vector_store import BaseVectorStore
+from app.vector_db.base_vector_store import BaseVectorStore
 
 
 class DenseRetriever:

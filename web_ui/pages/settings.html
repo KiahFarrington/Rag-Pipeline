@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Configuration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .setting-group {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .setting-group h3 {
+            margin-bottom: 15px;
+            color: #374151;
+            font-size: 1.2rem;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .radio-option:hover {
+            background: #f3f4f6;
+        }
+
+        .radio-option input[type="radio"] {
+            margin: 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0 10px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border-left: 4px solid #16a34a;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            border-left: 4px solid #dc2626;
+        }
+
+        .description {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>System Configuration</h1>
+            <p>Configure how your system processes documents and generates responses</p>
+            <div style="margin-top: 20px;">
+                <a href="/" class="nav-btn">Back to Home</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <form id="settingsForm">
+                <!-- Chunking Method -->
+                <div class="setting-group">
+                    <h3>Text Chunking</h3>
+                    <p class="description">How to split documents into manageable pieces</p>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="chunking_method" value="semantic">
+                            <div>
+                                <strong>Semantic Chunking</strong>
+                                <div class="description">Splits by paragraph meaning (better context)</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="chunking_method" value="fixed_length">
+                            <div>
+                                <strong>Fixed Length</strong>
+                                <div class="description">Splits every 500 characters (faster)</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Embedding Method -->
+                <div class="setting-group">
+                    <h3>Text Embeddings</h3>
+                    <p class="description">How to understand and represent text meaning</p>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="embedding_method" value="sentence_transformer">
+                            <div>
+                                <strong>Sentence Transformer</strong>
+                                <div class="description">Neural embeddings (best quality)</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="embedding_method" value="tfidf">
+                            <div>
+                                <strong>TF-IDF</strong>
+                                <div class="description">Word frequency based (faster)</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Retrieval Method -->
+                <div class="setting-group">
+                    <h3>Search Method</h3>
+                    <p class="description">How to find relevant information</p>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="retrieval_method" value="dense">
+                            <div>
+                                <strong>Dense Retrieval</strong>
+                                <div class="description">Pure vector similarity (simple)</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="retrieval_method" value="hybrid">
+                            <div>
+                                <strong>Hybrid Retrieval</strong>
+                                <div class="description">Vector + keyword matching (comprehensive)</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Generation Method -->
+                <div class="setting-group">
+                    <h3>Response Generation</h3>
+                    <p class="description">How to generate natural language answers</p>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="generation_method" value="none">
+                            <div>
+                                <strong>Document Search Only</strong>
+                                <div class="description">Show relevant chunks from your documents (fastest)</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="generation_method" value="huggingface">
+                            <div>
+                                <strong>HuggingFace AI Generation</strong>
+                                <div class="description">Generate AI responses using local models (slower)</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn">Save Settings</button>
+                    <button type="button" onclick="resetToDefaults()" class="btn">Reset to Defaults</button>
+                </div>
+            </form>
+
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = {};
+
+        // Load current configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentConfig();
+        });
+
+        // Load current configuration from API
+        async function loadCurrentConfig() {
+            try {
+                const response = await fetch('/api/config');
+                currentConfig = await response.json();
+                updateFormFromConfig(currentConfig);
+            } catch (error) {
+                showMessage('Failed to load current settings', 'error');
+            }
+        }
+
+        // Update form fields based on configuration
+        function updateFormFromConfig(config) {
+            // Set radio buttons based on current config
+            document.querySelector(`input[name="chunking_method"][value="${config.chunking_method}"]`).checked = true;
+            document.querySelector(`input[name="embedding_method"][value="${config.embedding_method}"]`).checked = true;
+            document.querySelector(`input[name="retrieval_method"][value="${config.retrieval_method}"]`).checked = true;
+            document.querySelector(`input[name="generation_method"][value="${config.generation_method}"]`).checked = true;
+        }
+
+        // Handle form submission
+        document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const newConfig = {
+                chunking_method: formData.get('chunking_method'),
+                embedding_method: formData.get('embedding_method'),
+                retrieval_method: formData.get('retrieval_method'),
+                generation_method: formData.get('generation_method')
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newConfig)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage('Settings saved successfully!', 'success');
+                    currentConfig = result.config;
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error');
+            }
+        });
+
+        // Reset to default configuration
+        function resetToDefaults() {
+            const defaults = {
+                chunking_method: 'semantic',
+                embedding_method: 'sentence_transformer',
+                retrieval_method: 'dense',
+                generation_method: 'none'
+            };
+            
+            updateFormFromConfig(defaults);
+            showMessage('Settings reset to defaults. Click Save to apply.', 'success');
+        }
+
+        // Show message helper
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+            
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html> 

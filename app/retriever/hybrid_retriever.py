@@ -9,7 +9,7 @@ from typing import List, Tuple, Set
 import numpy as np
 import re
 from collections import Counter
-from vector_db.base_vector_store import BaseVectorStore
+from app.vector_db.base_vector_store import BaseVectorStore
 
 
 class HybridRetriever:

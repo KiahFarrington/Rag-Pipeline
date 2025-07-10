@@ -12,7 +12,7 @@ from chunkers.semantic_chunker import chunk_by_semantics
 from chunkers.fixed_length_chunker import chunk_by_fixed_length
 from embedders.tfidf_embedder import create_tfidf_embeddings, create_single_tfidf_embedding
 from embedders.sentence_transformer_embedder import create_sentence_transformer_embeddings, create_single_sentence_transformer_embedding
-from vector_db.faiss_store import FAISSVectorStore
+from app.vector_db.faiss_store import FAISSVectorStore
 
 # Import both retriever options - MODULAR!
 from retriever.dense_retriever import DenseRetriever

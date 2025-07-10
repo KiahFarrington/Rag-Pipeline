@@ -15,9 +15,13 @@ rag-system/
 │   ├── retriever/         # Document retrieval logic
 │   ├── augmented_generation/ # LLM generation with context
 │   ├── data/             # Sample data and configuration
-│   └── main.py           # FastAPI application
-├── static/               # Frontend assets
+│   ├── main.py           # CLI application
+│   └── api.py            # Web API
+├── web_ui/               # Web user interface
+│   ├── pages/            # HTML pages
+│   └── assets/           # CSS, JS, images
 ├── requirements.txt      # Python dependencies
+├── run_api.py           # Start web server
 └── README.md            # This file
 ```
 

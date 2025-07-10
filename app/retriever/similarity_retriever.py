@@ -6,7 +6,7 @@ for a given query. This is the foundational retrieval method for RAG.
 
 from typing import List
 import numpy as np
-from vector_db.base_vector_store import BaseVectorStore
+from app.vector_db.base_vector_store import BaseVectorStore
 
 def retrieve_similar_chunks(vector_store: BaseVectorStore, query_embedding: np.ndarray, top_k: int = 5) -> List[str]:
     """Retrieve similar chunks from the vector store.
