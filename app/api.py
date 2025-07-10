@@ -377,19 +377,46 @@ def create_query_embedding_with_method(query: str, method: str):
 
 def extract_text_from_file(file_path: str, filename: str) -> str:
     """Extract text from uploaded files based on file type."""
+    import time  # Import time for timing logs
+    start_time = time.time()  # Start timing
+    
     # Get file extension to determine processing method
     file_extension = filename.lower().split('.')[-1]  # Get lowercase file extension
+    
+    logger.info(f"Starting text extraction from {filename} ({file_extension})")  # Log extraction start
     
     try:
         if file_extension == 'txt':
             # Process plain text files
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-                return file.read()  # Return file contents directly
+                text = file.read()  # Return file contents directly
+                logger.info(f"Text file extracted in {time.time() - start_time:.2f} seconds")  # Log timing
+                return text
                 
         elif file_extension == 'pdf':
-            # Process PDF files
-            if PDFPLUMBER_AVAILABLE:
-                # Use pdfplumber for better text extraction
+            # Process PDF files - use PyPDF2 first for speed
+            if PDF_AVAILABLE:
+                # Use PyPDF2 (faster for most PDFs)
+                logger.info("Using PyPDF2 for fast PDF extraction")  # Log method
+                text = ""  # Initialize text accumulator
+                with open(file_path, 'rb') as file:
+                    pdf_reader = PyPDF2.PdfReader(file)  # Create PDF reader
+                    for page_num, page in enumerate(pdf_reader.pages):  # Iterate through pages
+                        try:
+                            page_text = page.extract_text()  # Extract text from page
+                            if page_text:
+                                text += page_text + "\n"  # Add page text with newline
+                        except Exception as page_error:
+                            logger.warning(f"Failed to extract page {page_num}: {str(page_error)}")  # Log page errors
+                            continue  # Skip problematic pages
+                    
+                extraction_time = time.time() - start_time  # Calculate extraction time
+                logger.info(f"PyPDF2 extraction completed in {extraction_time:.2f} seconds, {len(text)} characters")  # Log results
+                return text  # Return extracted text
+                
+            elif PDFPLUMBER_AVAILABLE:
+                # Fallback to pdfplumber (slower but better quality)
+                logger.info("Using pdfplumber as fallback")  # Log fallback
                 import pdfplumber  # Import pdfplumber library
                 text = ""  # Initialize text accumulator
                 with pdfplumber.open(file_path) as pdf:
@@ -397,15 +424,8 @@ def extract_text_from_file(file_path: str, filename: str) -> str:
                         page_text = page.extract_text()  # Extract text from page
                         if page_text:
                             text += page_text + "\n"  # Add page text with newline
-                return text  # Return extracted text
-                
-            elif PDF_AVAILABLE:
-                # Fallback to PyPDF2
-                text = ""  # Initialize text accumulator
-                with open(file_path, 'rb') as file:
-                    pdf_reader = PyPDF2.PdfReader(file)  # Create PDF reader
-                    for page in pdf_reader.pages:  # Iterate through pages
-                        text += page.extract_text() + "\n"  # Extract and accumulate text
+                extraction_time = time.time() - start_time  # Calculate extraction time
+                logger.info(f"pdfplumber extraction completed in {extraction_time:.2f} seconds")  # Log results
                 return text  # Return extracted text
             else:
                 raise Exception("PDF processing libraries not available. Install PyPDF2 or pdfplumber.")
@@ -417,6 +437,7 @@ def extract_text_from_file(file_path: str, filename: str) -> str:
                 text = ""  # Initialize text accumulator
                 for paragraph in doc.paragraphs:  # Iterate through paragraphs
                     text += paragraph.text + "\n"  # Add paragraph text with newline
+                logger.info(f"DOCX file extracted in {time.time() - start_time:.2f} seconds")  # Log timing
                 return text  # Return extracted text
             else:
                 raise Exception("Word document processing not available. Install python-docx.")
@@ -425,7 +446,8 @@ def extract_text_from_file(file_path: str, filename: str) -> str:
             
     except Exception as e:
         # Handle file processing errors
-        logger.error(f"Error extracting text from {filename}: {str(e)}")  # Log the error
+        extraction_time = time.time() - start_time  # Calculate time even on error
+        logger.error(f"Error extracting text from {filename} after {extraction_time:.2f} seconds: {str(e)}")  # Log the error with timing
         raise  # Re-raise the exception for handling upstream
 
 def get_generator():
