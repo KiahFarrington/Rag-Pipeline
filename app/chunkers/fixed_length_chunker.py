@@ -7,7 +7,7 @@ from typing import List  # Type hints for better code clarity
 logger = logging.getLogger(__name__)  # Create logger instance for this chunker
 
 
-def chunk_by_fixed_length(text: str, chunk_size: int = 1000) -> List[str]:
+def chunk_by_fixed_length(text: str, chunk_size: int = 2000) -> List[str]:
     """Split text into fixed-length chunks with proper error handling and validation.
     
     Parameters

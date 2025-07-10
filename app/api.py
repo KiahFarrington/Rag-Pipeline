@@ -76,7 +76,7 @@ class RAGSystemState:
         # Default configuration - good balance of speed and quality
         self.config = {
             'chunking_method': 'fixed_length',  # Use fixed length chunking for better PDF handling
-            'embedding_method': 'sentence_transformer',  # Default to neural embeddings for quality
+            'embedding_method': 'tfidf',  # Use TF-IDF for much faster processing
             'retrieval_method': 'dense',  # Default to dense retrieval for simplicity
             'generation_method': 'none',  # Disable text generation by default - retrieval only
             'generation_model': 'none'  # No generation model needed
