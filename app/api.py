@@ -79,7 +79,7 @@ class RAGSystemState:
             'embedding_method': 'tfidf',  # Use TF-IDF for much faster processing
             'retrieval_method': 'dense',  # Default to dense retrieval for simplicity
             'generation_method': 'huggingface',  # Enable AI generation for synthesized answers
-            'generation_model': 'google/flan-t5-base'  # Use FLAN-T5 for technical Q&A
+            'generation_model': 'google/flan-t5-large'  # Use FLAN-T5-large for better technical synthesis
         }
         
         # Log the configuration being loaded for debugging

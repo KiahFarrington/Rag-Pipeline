@@ -35,7 +35,7 @@ class HuggingFaceGenerator:
     def __init__(
         self,
         model_name: str = "google/flan-t5-base", 
-        max_tokens: int = 400,
+        max_tokens: int = 600,
         temperature: float = 0.3,
         device: str = "auto"
     ):
@@ -119,7 +119,7 @@ class HuggingFaceGenerator:
         self,
         query: str,
         retrieved_chunks: List[str],
-        max_context_length: int = 500
+        max_context_length: int = 800
     ) -> Dict[str, Any]:
         """Generate response using retrieved chunks as context.
         
@@ -274,12 +274,12 @@ class SmallLanguageModelGenerator:
         return self.generator.generate_response(
             query, 
             retrieved_chunks, 
-            max_context_length=500  # Smaller context for small models
+            max_context_length=800  # Larger context for better technical responses
         )
 
 
 def create_huggingface_generator(
-    model_name: str = "google/flan-t5-base",
+    model_name: str = "google/flan-t5-large",
     use_small_model: bool = False
 ) -> HuggingFaceGenerator:
     """Factory function to create a Hugging Face generator.
