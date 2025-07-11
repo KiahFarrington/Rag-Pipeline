@@ -24,14 +24,16 @@ class FAISSVectorStore(BaseVectorStore):
     - In-memory storage with disk persistence
     - Metadata support for document tracking
     - Automatic normalization for cosine similarity
+    - Memory-efficient batch processing for large datasets
     """
     
-    def __init__(self, embedding_dim: Optional[int] = None):
+    def __init__(self, embedding_dim: Optional[int] = None, batch_size: int = 1000):
         """Initialize the FAISS vector store.
         
         Args:
             embedding_dim: Dimension of embeddings to store. If None, will be
                           inferred from the first batch of embeddings added.
+            batch_size: Maximum batch size for processing large datasets
         """
         # Store embedding dimension (will be set when first documents are added)
         self._embedding_dim = embedding_dim
@@ -47,13 +49,17 @@ class FAISSVectorStore(BaseVectorStore):
         # Counter for generating unique document IDs
         self._next_doc_id = 0
         
+        # Memory management settings
+        self._batch_size = batch_size  # Batch size for large dataset processing
+        self._total_documents = 0  # Track total documents for memory estimation
 
 
     def add_documents(
         self, 
         texts: List[str], 
         embeddings: np.ndarray, 
-        metadata: Optional[List[Dict[str, Any]]] = None
+        metadata: Optional[List[Dict[str, Any]]] = None,
+        batch_size: Optional[int] = None
     ) -> List[str]:
         """Add documents with their embeddings to the FAISS vector store.
         
@@ -61,10 +67,18 @@ class FAISSVectorStore(BaseVectorStore):
             texts: List of document text chunks to store
             embeddings: Numpy array of shape (n_documents, embedding_dim) with document embeddings
             metadata: Optional list of metadata dictionaries for each document
+            batch_size: Override default batch size for this operation
             
         Returns:
             List of unique document IDs assigned to the added documents
         """
+        # Use instance batch size if not provided
+        effective_batch_size = batch_size or self._batch_size
+        
+        # Process large datasets in batches to manage memory
+        if len(texts) > effective_batch_size:
+            return self._add_documents_in_batches(texts, embeddings, metadata, effective_batch_size)
+        
         # Validate input parameters
         if not isinstance(embeddings, np.ndarray):
             raise TypeError("embeddings must be a numpy array")
@@ -76,7 +90,6 @@ class FAISSVectorStore(BaseVectorStore):
         if self._embedding_dim is None:
             self._embedding_dim = embeddings.shape[1]
 
-        
         # Validate embedding dimensions match expected
         if embeddings.shape[1] != self._embedding_dim:
             raise ValueError(f"Embedding dimension {embeddings.shape[1]} doesn't match expected {self._embedding_dim}")
@@ -86,7 +99,6 @@ class FAISSVectorStore(BaseVectorStore):
             # Use IndexFlatIP for inner product similarity (cosine when normalized)
             self._index = faiss.IndexFlatIP(self._embedding_dim)
 
-        
         # Normalize embeddings for cosine similarity search
         embeddings_normalized = embeddings.astype(np.float32)
         faiss.normalize_L2(embeddings_normalized)  # In-place normalization
@@ -113,8 +125,62 @@ class FAISSVectorStore(BaseVectorStore):
         
         self._metadata.extend(metadata)
         
+        # Update total documents count
+        self._total_documents += len(texts)
 
         return new_doc_ids
+
+    def _add_documents_in_batches(
+        self,
+        texts: List[str],
+        embeddings: np.ndarray,
+        metadata: Optional[List[Dict[str, Any]]],
+        batch_size: int
+    ) -> List[str]:
+        """Add documents in batches to manage memory efficiently."""
+        all_doc_ids = []
+        
+        # Process in batches
+        for i in range(0, len(texts), batch_size):
+            end_idx = min(i + batch_size, len(texts))
+            
+            # Extract batch data
+            batch_texts = texts[i:end_idx]
+            batch_embeddings = embeddings[i:end_idx]
+            batch_metadata = metadata[i:end_idx] if metadata else None
+            
+            # Process batch
+            batch_doc_ids = self.add_documents(
+                batch_texts, 
+                batch_embeddings, 
+                batch_metadata,
+                batch_size=batch_size  # Prevent recursive batching
+            )
+            all_doc_ids.extend(batch_doc_ids)
+        
+        return all_doc_ids
+
+    def get_memory_usage_estimate(self) -> Dict[str, Any]:
+        """Get estimated memory usage of the vector store."""
+        if self._embedding_dim is None:
+            return {'status': 'no_data', 'estimate_mb': 0}
+        
+        # Estimate memory usage
+        embedding_memory = self._total_documents * self._embedding_dim * 4  # 4 bytes per float32
+        text_memory = sum(len(text.encode('utf-8')) for text in self._documents)
+        metadata_memory = len(str(self._metadata).encode('utf-8'))
+        
+        total_mb = (embedding_memory + text_memory + metadata_memory) / (1024 * 1024)
+        
+        return {
+            'status': 'estimated',
+            'total_documents': self._total_documents,
+            'embedding_dimension': self._embedding_dim,
+            'estimate_mb': round(total_mb, 2),
+            'embedding_memory_mb': round(embedding_memory / (1024 * 1024), 2),
+            'text_memory_mb': round(text_memory / (1024 * 1024), 2),
+            'metadata_memory_mb': round(metadata_memory / (1024 * 1024), 2)
+        }
 
     def search(
         self, 

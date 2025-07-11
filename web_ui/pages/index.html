@@ -301,8 +301,8 @@
                 
                 <!-- File Upload Option -->
                 <div class="upload-area" id="fileUploadArea" style="margin-bottom: 20px;">
-                    <p style="margin-bottom: 15px; color: #6b7280;">Upload documents (.txt, .pdf, .docx):</p>
-                    <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="margin-bottom: 15px; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; width: 100%;">
+                    <p style="margin-bottom: 15px; color: #6b7280;">Upload documents (.txt, .pdf):</p>
+                    <input type="file" id="fileInput" accept=".txt,.pdf" style="margin-bottom: 15px; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; width: 100%;">
                     <button class="btn" onclick="uploadFile()">
                         Upload & Process File
                     </button>
@@ -405,11 +405,11 @@
                 return;
             }
 
-            const allowedTypes = ['.txt', '.pdf', '.docx'];
+            const allowedTypes = ['.txt', '.pdf'];
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
             
             if (!allowedTypes.includes(fileExtension)) {
-                showMessage('Please select a .txt, .pdf, or .docx file', 'error', 'uploadResult');
+                showMessage('Please select a .txt or .pdf file', 'error', 'uploadResult');
                 return;
             }
 
@@ -549,7 +549,8 @@
             const resultDiv = document.getElementById('queryResult');
             
             let html = '<div class="response-area">';
-            html += `<h3>Results for: "${result.query}"</h3>`;
+            // Fix field name mismatch - use query_processed instead of query
+            html += `<h3>Results for: "${result.query_processed || result.query || 'your query'}"</h3>`;
 
             // Show generated response if available
             if (result.generated_response) {
@@ -560,6 +561,12 @@
                     html += `<p style="font-size: 0.8rem; color: #6b7280; margin-top: 10px;">Model: ${result.model_used}</p>`;
                 }
                 html += '</div>';
+            } else if (result.generation_error) {
+                html += '<div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">';
+                html += '<h4 style="margin-bottom: 10px; color: #92400e;">AI Generation Issue:</h4>';
+                html += `<p style="color: #92400e; margin: 0;">${result.generation_error}</p>`;
+                html += '<p style="color: #6b7280; margin: 5px 0 0 0; font-size: 0.9rem;">Showing search results below.</p>';
+                html += '</div>';
             } else {
                 html += '<div style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px;">';
                 html += '<h4 style="margin-bottom: 10px; color: #374151;">Document Search Results:</h4>';
@@ -567,23 +574,34 @@
                 html += '</div>';
             }
 
-            // Show retrieved chunks
-            if (result.retrieved_chunks && result.retrieved_chunks.length > 0) {
-                console.log('Found', result.retrieved_chunks.length, 'chunks to display');
+            // Show retrieved chunks - Fix structure to match API response
+            if (result.chunks && result.chunks.length > 0) {
+                console.log('Found', result.chunks.length, 'chunks to display');
                 html += '<div class="sources">';
                 html += '<h4 style="margin-bottom: 15px; color: #374151;">Source Information:</h4>';
                 
-                result.retrieved_chunks.forEach((chunk, index) => {
-                    console.log(`Chunk ${index + 1}:`, chunk.text.substring(0, 100) + '...');
+                result.chunks.forEach((chunk, index) => {
+                    console.log(`Chunk ${index + 1}:`, chunk.substring(0, 100) + '...');
                     html += '<div class="source-chunk">';
-                    html += `<div class="score">Relevance: ${(chunk.similarity_score * 100).toFixed(1)}%</div>`;
-                    html += `<div>${chunk.text}</div>`;
+                    // Use scores array if available
+                    const score = result.scores && result.scores[index] ? result.scores[index] : 0;
+                    html += `<div class="score">Relevance: ${(score * 100).toFixed(1)}%</div>`;
+                    html += `<div>${chunk}</div>`;
                     html += '</div>';
                 });
                 
                 html += '</div>';
             } else {
                 console.log('No chunks found in result');
+                html += '<div style="background: #fef2f2; padding: 15px; border-radius: 6px; margin-top: 20px; border-left: 4px solid #ef4444;">';
+                html += '<h4 style="margin-bottom: 10px; color: #dc2626;">No Relevant Information Found</h4>';
+                html += '<p style="color: #7f1d1d; margin: 0;">No relevant content was found for your query. Try:</p>';
+                html += '<ul style="color: #7f1d1d; margin: 10px 0 0 20px; padding: 0;">';
+                html += '<li>Using different keywords</li>';
+                html += '<li>Making your query more specific</li>';
+                html += '<li>Uploading more relevant documents</li>';
+                html += '</ul>';
+                html += '</div>';
             }
 
             html += '</div>';
@@ -630,13 +648,13 @@
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 const file = files[0];
-                const allowedTypes = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                const allowedTypes = ['text/plain', 'application/pdf'];
                 
-                if (allowedTypes.includes(file.type) || file.name.endsWith('.txt') || file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+                if (allowedTypes.includes(file.type) || file.name.endsWith('.txt') || file.name.endsWith('.pdf')) {
                     fileInput.files = files;
                     showMessage(`File "${file.name}" ready for upload. Click "Upload & Process File".`, 'success', 'uploadResult');
                 } else {
-                    showMessage('Please drop a .txt, .pdf, or .docx file', 'error', 'uploadResult');
+                    showMessage('Please drop a .txt or .pdf file', 'error', 'uploadResult');
                 }
             }
         });

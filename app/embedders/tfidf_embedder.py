@@ -36,7 +36,7 @@ def create_tfidf_embeddings(texts: List[str]) -> np.ndarray:
     # Early validation of input parameters
     if not texts:
         logger.warning("Empty texts list provided to create_tfidf_embeddings")  # Log empty input
-        return np.array([])  # Return empty array for empty input
+        return np.array([]).reshape(0, 1000)  # Return empty array with correct shape for 1000-dimensional embeddings
     
     # Validate that all texts are strings and not empty
     valid_texts = []  # List to store validated text strings
@@ -46,13 +46,14 @@ def create_tfidf_embeddings(texts: List[str]) -> np.ndarray:
             continue  # Skip non-string items
         if not text.strip():
             logger.warning(f"Text at index {i} is empty or whitespace-only")  # Log empty text
-            continue  # Skip empty texts
-        valid_texts.append(text.strip())  # Add cleaned text to valid list
+            valid_texts.append("empty text")  # Use placeholder for empty texts to maintain array shape
+        else:
+            valid_texts.append(text.strip())  # Add cleaned text to valid list
     
     # Check if we have any valid texts after filtering
     if not valid_texts:
         logger.error("No valid texts found after filtering")  # Log validation failure
-        raise ValueError("No valid text strings provided for TF-IDF embedding")  # Raise error for no valid inputs
+        return np.zeros((len(texts), 1000))  # Return zero embeddings to maintain expected shape
     
     logger.info(f"Processing {len(valid_texts)} valid texts for TF-IDF embedding")  # Log processing count
     

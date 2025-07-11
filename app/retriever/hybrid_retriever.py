@@ -180,7 +180,7 @@ class HybridRetriever:
         query_embedding: np.ndarray, 
         query_text: str,
         top_k: int = 5
-    ) -> List[Tuple[str, float, dict]]:
+    ) -> List[Tuple[str, float]]:
         """Retrieve chunks with detailed scoring information.
         
         Parameters
@@ -196,13 +196,53 @@ class HybridRetriever:
             
         Returns
         -------
-        List[Tuple[str, float, dict]]
-            List of (chunk, hybrid_score, score_breakdown) tuples
+        List[Tuple[str, float]]
+            List of (chunk, hybrid_score) tuples
         """
-        # Use similar logic as retrieve() but return detailed scores
-        # This would include vector_score, keyword_score, hybrid_score in the dict
-        # Implementation similar to retrieve() above but with more detail
-        pass  # Placeholder for now
+        # Validate inputs early
+        if query_embedding is None or len(query_embedding) == 0:
+            return []
+            
+        if not query_text or not query_text.strip():
+            return []
+            
+        if top_k <= 0:
+            return []
+        
+        # Step 1: Get more candidates from vector similarity
+        candidate_k = min(top_k * 3, 50)  # Cap at 50 candidates
+        chunks, vector_scores, metadata = vector_store.search(query_embedding, candidate_k)
+        
+        # Handle case with no results
+        if not chunks:
+            return []
+        
+        # Step 2: Extract query keywords for sparse matching
+        query_keywords = self._extract_keywords(query_text)
+        
+        # Step 3: Calculate hybrid scores for each candidate
+        hybrid_scores = []
+        for i, chunk in enumerate(chunks):
+            # Get normalized vector score (assume scores are already 0-1)
+            vector_score = vector_scores[i] if i < len(vector_scores) else 0.0
+            
+            # Calculate keyword overlap score
+            keyword_score = self._calculate_keyword_score(query_keywords, chunk)
+            
+            # Combine scores with weights
+            hybrid_score = (self.vector_weight * vector_score + 
+                          self.keyword_weight * keyword_score)
+            
+            # Only include if meets minimum keyword overlap
+            keyword_overlap_count = len(self._extract_keywords(chunk).intersection(query_keywords))
+            if keyword_overlap_count >= self.min_keyword_overlap:
+                hybrid_scores.append((chunk, hybrid_score))
+        
+        # Step 4: Sort by hybrid score and return top_k
+        hybrid_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Return chunks with scores
+        return hybrid_scores[:top_k]
 
 
 # Convenience function for easy usage

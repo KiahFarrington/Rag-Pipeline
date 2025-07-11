@@ -211,7 +211,7 @@ class OllamaGenerator:
         return "\n\n".join(context_parts)
     
     def _create_prompt(self, query: str, context: str) -> str:
-        """Create a well-structured prompt for the language model.
+        """Create an optimized prompt for technical and procedural queries.
         
         Args:
             query: User's question
@@ -220,23 +220,82 @@ class OllamaGenerator:
         Returns:
             str: Complete prompt for the model
         """
-        # Create a structured prompt that guides the model
-        prompt = f"""You are a helpful assistant that answers questions based on provided context.
+        # Detect if query is asking for steps or procedures
+        is_procedural_query = self._is_procedural_query(query)
+        
+        # Create appropriate prompt based on query type
+        if is_procedural_query:
+            # Use structured prompt for step-by-step responses
+            prompt = f"""You are a technical expert helping with installation and procedure questions.
 
-Context:
+Context Information:
 {context}
 
 Question: {query}
 
 Instructions:
-- Answer the question using only the information provided in the context above
-- If the context doesn't contain enough information to answer the question, say so clearly
-- Be concise but thorough in your response
+- Based on the context above, provide a clear, step-by-step answer
+- If the context contains installation steps or procedures, organize them in numbered steps
+- Be specific and include important safety notes, warnings, or requirements
+- Only use information from the provided context
+- If the context lacks sufficient information, clearly state what information is missing
+- Cite specific sources when possible (e.g., "According to Source 1...")
+
+Answer:"""
+        else:
+            # Use general prompt for other technical queries
+            prompt = f"""You are a technical expert answering questions based on provided documentation.
+
+Context Information:
+{context}
+
+Question: {query}
+
+Instructions:
+- Answer the question using the information from the context above
+- Be specific, accurate, and cite relevant details from the documentation
+- If the context doesn't contain enough information, clearly state what's missing
+- Organize your response clearly and logically
 - Cite specific sources when possible (e.g., "According to Source 1...")
 
 Answer:"""
         
-        return prompt  # Return the complete prompt
+        return prompt  # Return the optimized prompt
+    
+    def _is_procedural_query(self, query: str) -> bool:
+        """Detect if query is asking for steps, procedures, or instructions.
+        
+        Args:
+            query: User's question
+            
+        Returns:
+            bool: True if query appears to be asking for procedural information
+        """
+        # Import re for pattern matching
+        import re
+        
+        # Keywords that indicate procedural queries
+        procedural_keywords = [
+            r'\bsteps?\b',  # "step", "steps"
+            r'\bhow\s+to\b',  # "how to"
+            r'\binstall\b',  # "install"
+            r'\bsetup\b',  # "setup"
+            r'\bconfigure\b',  # "configure"
+            r'\bprocedure\b',  # "procedure"
+            r'\binstructions?\b',  # "instruction", "instructions"
+            r'\bprocess\b',  # "process"
+            r'\bmethod\b',  # "method"
+            r'\bway\s+to\b',  # "way to"
+            r'\bguide\b',  # "guide"
+            r'\btutorial\b',  # "tutorial"
+        ]
+        
+        # Check if query contains any procedural keywords
+        for pattern in procedural_keywords:
+            if re.search(pattern, query, re.IGNORECASE):
+                return True  # Query appears to be procedural
+        
+        return False  # Query doesn't appear to be procedural
 
 
 def create_ollama_generator(model_name: str = "llama2") -> OllamaGenerator:

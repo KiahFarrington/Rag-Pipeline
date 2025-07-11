@@ -11,6 +11,7 @@ Popular free models:
 
 from typing import List, Dict, Any, Optional
 import logging
+import re
 
 # Set up logging for debugging
 logging.basicConfig(level=logging.INFO)
@@ -225,7 +226,7 @@ class HuggingFaceGenerator:
         return ". ".join(context_parts)
     
     def _create_prompt(self, query: str, context: str) -> str:
-        """Create a simple, direct prompt for FLAN-T5.
+        """Create an optimized prompt for technical and procedural queries.
         
         Args:
             query: User's question
@@ -234,13 +235,68 @@ class HuggingFaceGenerator:
         Returns:
             str: Complete prompt for the model
         """
-        # Use extremely simple format that FLAN-T5 handles well
-        prompt = f"""Context: {context}
+        # Detect if query is asking for steps or procedures
+        is_procedural_query = self._is_procedural_query(query)
+        
+        # Create appropriate prompt based on query type
+        if is_procedural_query:
+            # Use structured prompt for step-by-step responses
+            prompt = f"""You are a technical expert helping with installation and procedure questions.
+
+Context Information:
+{context}
 
 Question: {query}
+
+Instructions: Based on the context above, provide a clear, step-by-step answer. If the context contains installation steps or procedures, organize them in numbered steps. Be specific and include important safety notes or requirements.
+
+Answer:"""
+        else:
+            # Use general prompt for other technical queries
+            prompt = f"""You are a technical expert answering questions based on provided documentation.
+
+Context Information:
+{context}
+
+Question: {query}
+
+Instructions: Answer the question using the information from the context. Be specific, accurate, and cite relevant details from the documentation when possible.
+
 Answer:"""
         
-        return prompt  # Return the simple prompt
+        return prompt  # Return the optimized prompt
+    
+    def _is_procedural_query(self, query: str) -> bool:
+        """Detect if query is asking for steps, procedures, or instructions.
+        
+        Args:
+            query: User's question
+            
+        Returns:
+            bool: True if query appears to be asking for procedural information
+        """
+        # Keywords that indicate procedural queries
+        procedural_keywords = [
+            r'\bsteps?\b',  # "step", "steps"
+            r'\bhow\s+to\b',  # "how to"
+            r'\binstall\b',  # "install"
+            r'\bsetup\b',  # "setup"
+            r'\bconfigure\b',  # "configure"
+            r'\bprocedure\b',  # "procedure"
+            r'\binstructions?\b',  # "instruction", "instructions"
+            r'\bprocess\b',  # "process"
+            r'\bmethod\b',  # "method"
+            r'\bway\s+to\b',  # "way to"
+            r'\bguide\b',  # "guide"
+            r'\btutorial\b',  # "tutorial"
+        ]
+        
+        # Check if query contains any procedural keywords
+        for pattern in procedural_keywords:
+            if re.search(pattern, query, re.IGNORECASE):
+                return True  # Query appears to be procedural
+        
+        return False  # Query doesn't appear to be procedural
 
 
 class SmallLanguageModelGenerator:

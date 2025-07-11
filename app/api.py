@@ -6,7 +6,8 @@ for document upload, querying, and system configuration.
 
 import os  # Operating system interface for file operations
 import logging  # Logging system for debugging and monitoring
-from typing import Dict, List, Any, Optional  # Type hints for better code clarity
+import re  # Regular expressions for text pattern matching
+from typing import Dict, List, Any, Optional, Tuple  # Type hints for better code clarity
 from flask import Flask, request, jsonify, render_template, send_from_directory  # Web framework components
 from flask_cors import CORS  # Cross-Origin Resource Sharing for frontend access
 import json  # JSON handling for API responses
@@ -30,20 +31,18 @@ try:
 except ImportError:
     PDFPLUMBER_AVAILABLE = False  # Advanced PDF processing not available
 
-try:
-    from docx import Document  # Word document processing
-    DOCX_AVAILABLE = True  # Word document processing available
-except ImportError:
-    DOCX_AVAILABLE = False  # Word document processing not available
+# Removed docx import - not needed per user request
 
 # Import our existing RAG components - no changes needed!
 from app.chunkers.semantic_chunker import chunk_by_semantics  # Semantic text chunking
 from app.chunkers.fixed_length_chunker import chunk_by_fixed_length  # Fixed-length text chunking
+from app.chunkers.adaptive_chunker import chunk_adaptively  # NEW: Adaptive chunking
 from app.embedders.tfidf_embedder import create_tfidf_embeddings, create_single_tfidf_embedding  # TF-IDF embeddings
 from app.embedders.sentence_transformer_embedder import create_sentence_transformer_embeddings, create_single_sentence_transformer_embedding  # Neural embeddings
 from app.vector_db.faiss_store import FAISSVectorStore  # Vector database for storing embeddings
 from app.retriever.dense_retriever import DenseRetriever  # Dense vector retrieval
 from app.retriever.hybrid_retriever import HybridRetriever  # Hybrid dense+sparse retrieval
+from app.retriever.advanced_retriever import AdvancedRetriever  # NEW: Advanced retrieval with re-ranking
 # Ollama support removed - no external dependencies required
 from app.augmented_generation.huggingface_generator import create_huggingface_generator  # HuggingFace LLM generator
 
@@ -73,21 +72,32 @@ class RAGSystemState:
     
     def __init__(self):
         """Initialize RAG system with default configuration."""
-        # Default configuration - good balance of speed and quality
+        # Enhanced configuration with more options
         self.config = {
-            'chunking_method': 'fixed_length',  # Use fixed length chunking for better PDF handling
-            'embedding_method': 'tfidf',  # Use TF-IDF for much faster processing
-            'retrieval_method': 'dense',  # Default to dense retrieval for simplicity
+            'chunking_method': 'adaptive',  # Use adaptive chunking for better performance
+            'embedding_method': 'sentence_transformer',  # Use neural embeddings for better semantic understanding
+            'retrieval_method': 'advanced',  # Use advanced retrieval with re-ranking
             'generation_method': 'huggingface',  # Enable AI generation for synthesized answers
-            'generation_model': 'google/flan-t5-large'  # Use FLAN-T5-large for better technical synthesis
+            'generation_model': 'google/flan-t5-large',  # Use FLAN-T5-large for better technical synthesis
+            # NEW: Advanced configuration options
+            'chunk_size': 800,  # Target chunk size for adaptive chunking
+            'min_chunk_size': 100,  # Minimum chunk size
+            'max_chunk_size': 2000,  # Maximum chunk size
+            'retrieval_top_k': 5,  # Number of chunks to retrieve
+            'enable_query_expansion': True,  # Enable query expansion in advanced retrieval
+            'enable_reranking': True,  # Enable result re-ranking
+            'diversity_factor': 0.3,  # Diversity factor for result filtering
+            'batch_size': 1000,  # Batch size for processing large datasets
+            'enable_analytics': True,  # Enable analytics tracking
+            'cache_embeddings': True  # Enable embedding caching
         }
         
         # Log the configuration being loaded for debugging
-        logger.info(f"RAG system initialized with configuration: {self.config}")  # Debug log for config
+        logger.info(f"RAG system initialized with enhanced configuration: {self.config}")  # Debug log for config
         
         # System data storage
         self.documents = {}  # Store processed documents by ID
-        self.vector_store = FAISSVectorStore()  # Initialize vector database
+        self.vector_store = FAISSVectorStore(batch_size=self.config['batch_size'])  # Initialize vector database with batch processing
         self.chunk_embeddings = []  # Store all chunk embeddings
         self.all_chunks = []  # Store all text chunks
         self.next_doc_id = 1  # Counter for document IDs
@@ -95,6 +105,38 @@ class RAGSystemState:
         # Cached models to avoid reloading
         self.cached_generator = None  # Cache LLM generator to avoid reloading
         self.cached_generator_type = None  # Track which generator is cached
+        
+        # NEW: Analytics and monitoring
+        self.analytics = {
+            'total_documents_processed': 0,  # Total documents ingested
+            'total_queries_processed': 0,  # Total queries handled
+            'total_chunks_created': 0,  # Total chunks generated
+            'average_response_time': 0.0,  # Average query response time
+            'last_activity_timestamp': None,  # Last system activity
+            'error_count': 0,  # Number of errors encountered
+            'retrieval_stats': {  # Retrieval method usage statistics
+                'dense': 0,
+                'hybrid': 0,
+                'advanced': 0
+            },
+            'chunking_stats': {  # Chunking method usage statistics
+                'fixed_length': 0,
+                'semantic': 0,
+                'adaptive': 0
+            },
+            'embedding_stats': {  # Embedding method usage statistics
+                'tfidf': 0,
+                'sentence_transformer': 0
+            }
+        }
+        
+        # NEW: Performance monitoring
+        self.performance_metrics = {
+            'memory_usage': {},  # Memory usage tracking
+            'processing_times': [],  # Processing time history
+            'cache_hit_rate': 0.0,  # Embedding cache hit rate
+            'system_health_score': 1.0  # Overall system health (0-1)
+        }
 
 # Initialize global system state
 rag_state = RAGSystemState()
@@ -278,17 +320,41 @@ def update_config():
         return jsonify({'error': str(e)}), 500  # Return error response
 
 def create_chunks_with_method(text: str, method: str) -> List[str]:
-    """Create text chunks using the specified method."""
-    # Log the chunking method being used for debugging
-    logger.info(f"Using chunking method: {method}")  # Debug log to see actual method
+    """Create chunks using the specified chunking method with enhanced options.
     
-    # Choose chunking method based on configuration
+    Args:
+        text: Text to chunk
+        method: Chunking method ('fixed_length', 'semantic', 'adaptive')
+        
+    Returns:
+        List of text chunks
+        
+    Raises:
+        ValueError: If method is not supported
+    """
+    # Update analytics if enabled
+    if rag_state.config.get('enable_analytics', True):
+        rag_state.analytics['chunking_stats'][method] = rag_state.analytics['chunking_stats'].get(method, 0) + 1
+    
+    # Apply chunking method based on configuration
     if method == 'semantic':
-        logger.info("Performing semantic chunking")  # Debug log for semantic
-        return chunk_by_semantics(text)  # Use semantic chunking for better context
-    else:
-        logger.info("Performing fixed-length chunking")  # Debug log for fixed-length
-        return chunk_by_fixed_length(text)  # Use fixed-length chunking for speed
+        chunks = chunk_by_semantics(text, min_chunk_size=rag_state.config.get('min_chunk_size', 50))
+    elif method == 'adaptive':
+        # Use adaptive chunking with configuration parameters
+        chunks = chunk_adaptively(
+            text,
+            min_chunk_size=rag_state.config.get('min_chunk_size', 100),
+            max_chunk_size=rag_state.config.get('max_chunk_size', 2000),
+            target_chunk_size=rag_state.config.get('chunk_size', 800)
+        )
+    else:  # default to fixed_length
+        chunks = chunk_by_fixed_length(text, chunk_size=rag_state.config.get('chunk_size', 500))
+    
+    # Update chunk statistics
+    if rag_state.config.get('enable_analytics', True):
+        rag_state.analytics['total_chunks_created'] += len(chunks)
+    
+    return chunks
 
 def create_embeddings_with_method(chunks: List[str], method: str):
     """Create embeddings using the specified method with fallback handling."""
@@ -375,6 +441,33 @@ def create_query_embedding_with_method(query: str, method: str):
             logger.error("TF-IDF query embedding creation failed with no fallback available")  # Log TF-IDF failure
             raise RuntimeError(f"TF-IDF query embedding creation failed: {str(e)}")  # Re-raise the original error
 
+def create_retriever_with_method(method: str):
+    """Create retriever instance based on configured method.
+    
+    Args:
+        method: Retrieval method ('dense', 'hybrid', 'advanced')
+        
+    Returns:
+        Retriever instance
+    """
+    # Update analytics if enabled
+    if rag_state.config.get('enable_analytics', True):
+        rag_state.analytics['retrieval_stats'][method] = rag_state.analytics['retrieval_stats'].get(method, 0) + 1
+    
+    # Create retriever based on method
+    if method == 'hybrid':
+        return HybridRetriever()
+    elif method == 'advanced':
+        # Create advanced retriever with configuration
+        return AdvancedRetriever(
+            base_retriever_type='hybrid',
+            rerank_results=rag_state.config.get('enable_reranking', True),
+            expand_queries=rag_state.config.get('enable_query_expansion', True),
+            diversity_factor=rag_state.config.get('diversity_factor', 0.3)
+        )
+    else:  # default to dense
+        return DenseRetriever()
+
 def extract_text_from_file(file_path: str, filename: str) -> str:
     """Extract text from uploaded files based on file type."""
     import time  # Import time for timing logs
@@ -432,15 +525,8 @@ def extract_text_from_file(file_path: str, filename: str) -> str:
                 
         elif file_extension == 'docx':
             # Process Word documents
-            if DOCX_AVAILABLE:
-                doc = Document(file_path)  # Open Word document
-                text = ""  # Initialize text accumulator
-                for paragraph in doc.paragraphs:  # Iterate through paragraphs
-                    text += paragraph.text + "\n"  # Add paragraph text with newline
-                logger.info(f"DOCX file extracted in {time.time() - start_time:.2f} seconds")  # Log timing
-                return text  # Return extracted text
-            else:
-                raise Exception("Word document processing not available. Install python-docx.")
+            # Removed docx import, so this block will now raise an error
+            raise Exception("Word document processing not available. Install python-docx.")
         else:
             raise Exception(f"Unsupported file type: .{file_extension}")
             
@@ -449,6 +535,103 @@ def extract_text_from_file(file_path: str, filename: str) -> str:
         extraction_time = time.time() - start_time  # Calculate time even on error
         logger.error(f"Error extracting text from {filename} after {extraction_time:.2f} seconds: {str(e)}")  # Log the error with timing
         raise  # Re-raise the exception for handling upstream
+
+def validate_chunk_relevance(chunks_with_scores: List[Tuple[str, float]], query: str) -> List[Tuple[str, float]]:
+    """Validate and filter chunks for relevance and quality.
+    
+    Args:
+        chunks_with_scores: List of (chunk_text, score) tuples
+        query: Original user query
+        
+    Returns:
+        List of validated (chunk_text, score) tuples
+    """
+    if not chunks_with_scores:
+        return []  # Return empty list if no chunks
+    
+    validated_chunks = []  # List for validated chunks
+    query_lower = query.lower()  # Lowercase query for matching
+    
+    # Extract key terms from query
+    query_words = set(re.findall(r'\b\w+\b', query_lower))  # Extract words from query
+    query_words = {word for word in query_words if len(word) > 2}  # Filter short words
+    
+    for chunk, score in chunks_with_scores:
+        # Skip empty or very short chunks
+        if not chunk or len(chunk.strip()) < 50:
+            continue  # Skip too short chunks
+        
+        chunk_lower = chunk.lower()  # Lowercase chunk for matching
+        
+        # Check for minimum relevance indicators
+        relevance_score = 0.0  # Initialize relevance score
+        
+        # 1. Check for query word matches
+        chunk_words = set(re.findall(r'\b\w+\b', chunk_lower))  # Extract words from chunk
+        matching_words = query_words.intersection(chunk_words)  # Find common words
+        if query_words:
+            word_match_ratio = len(matching_words) / len(query_words)  # Calculate match ratio
+            relevance_score += word_match_ratio * 0.4  # Word matching contributes 40%
+        
+        # 2. Check for exact phrase matches
+        if len(query.split()) > 1:  # Multi-word query
+            if query_lower in chunk_lower:
+                relevance_score += 0.3  # Exact phrase match bonus
+        
+        # 3. Check for procedural content if query is procedural
+        is_procedural_query = any(keyword in query_lower for keyword in [
+            'step', 'steps', 'how to', 'install', 'setup', 'procedure', 'instructions'
+        ])
+        
+        if is_procedural_query:
+            # Boost score for procedural content
+            procedural_indicators = [
+                r'\bstep\s*\d+', r'\d+\.\s', r'\binstall', r'\bconnect', 
+                r'\bmount', r'\bprocedure', r'\binstructions'
+            ]
+            
+            procedural_matches = 0
+            for pattern in procedural_indicators:
+                procedural_matches += len(re.findall(pattern, chunk_lower))
+            
+            if procedural_matches > 0:
+                relevance_score += min(0.3, procedural_matches * 0.1)  # Procedural bonus
+        
+        # 4. Penalize chunks that are just metadata/titles
+        metadata_patterns = [
+            r'^[A-Z\s\d\-_]+$',  # All caps titles
+            r'publication\s+\d+',  # Publication numbers
+            r'^\w+\s+\d+[\w\s]*$',  # Simple title patterns
+        ]
+        
+        is_metadata = any(re.match(pattern, chunk.strip()) for pattern in metadata_patterns)
+        if is_metadata and len(chunk.strip()) < 200:
+            relevance_score *= 0.3  # Heavy penalty for metadata chunks
+        
+        # 5. Check minimum content quality
+        has_meaningful_content = (
+            len(chunk.strip()) >= 100 and  # Reasonable length
+            '.' in chunk and  # Contains sentences
+            any(char.islower() for char in chunk)  # Not all caps
+        )
+        
+        if not has_meaningful_content:
+            relevance_score *= 0.5  # Penalty for low-quality content
+        
+        # Apply minimum relevance threshold
+        min_relevance = 0.15  # Minimum relevance threshold
+        combined_score = max(score * 0.7 + relevance_score * 0.3, relevance_score)  # Combine scores
+        
+        if combined_score >= min_relevance:
+            validated_chunks.append((chunk, combined_score))  # Add validated chunk
+    
+    # Sort by combined score
+    validated_chunks.sort(key=lambda x: x[1], reverse=True)  # Sort by score
+    
+    # Log validation results
+    logger.info(f"Chunk validation: {len(chunks_with_scores)} → {len(validated_chunks)} chunks passed")
+    
+    return validated_chunks  # Return validated chunks
 
 def get_generator():
     """Get or create LLM generator based on current configuration."""
@@ -526,16 +709,27 @@ def ingest_document():
         rag_state.all_chunks.extend(chunks)  # Add chunks to global list
         
         # Add embeddings to vector store
-        rag_state.vector_store.add_documents(chunks, chunk_embeddings)  # Store in vector database
+        rag_state.vector_store.add_documents(chunks, chunk_embeddings)
         
-        logger.info(f"Document {doc_id} ingested: {len(chunks)} chunks")  # Log successful ingestion
+        # Update analytics if enabled
+        if rag_state.config.get('enable_analytics', True):
+            rag_state.analytics['total_documents_processed'] += 1
+            rag_state.analytics['last_activity_timestamp'] = str(datetime.now())
         
+        # Log successful processing
+        logger.info(f"Document {doc_id} successfully processed: {len(chunks)} chunks created")
+        
+        # Return success response with detailed information
         return jsonify({
-            'message': 'Document processed successfully',  # Success message
-            'document_id': doc_id,  # Return document ID
+            'success': True,  # Indicate successful processing
+            'message': f'Document processed successfully with {len(chunks)} chunks',  # Success message
+            'document_id': doc_id,  # Generated document ID
             'chunks_created': len(chunks),  # Number of chunks created
-            'config_used': rag_state.config.copy()  # Configuration used
-        })
+            'embedding_method': rag_state.config['embedding_method'],  # Embedding method used
+            'chunking_method': rag_state.config['chunking_method'],  # Chunking method used
+            'total_documents': len(rag_state.documents),  # Total documents in system
+            'total_chunks': len(rag_state.all_chunks)  # Total chunks in system
+        }), 200  # HTTP 200 OK status
         
     except Exception as e:
         # Handle document ingestion errors
@@ -573,36 +767,58 @@ def query_documents():
         query_embedding = create_query_embedding_with_method(query, rag_state.config['embedding_method'])  # Embed the query
         
         # Retrieve relevant chunks using configured method
-        if rag_state.config['retrieval_method'] == 'hybrid':
-            retriever = HybridRetriever()  # Use hybrid retrieval
-            chunks_with_scores = retriever.retrieve_with_scores(
-                rag_state.vector_store, query_embedding, query, top_k)  # Get chunks with scores
-        else:
-            retriever = DenseRetriever()  # Use dense retrieval
-            chunks_with_scores = retriever.retrieve_with_scores(
-                rag_state.vector_store, query_embedding, top_k)  # Get chunks with scores
+        retriever = create_retriever_with_method(rag_state.config['retrieval_method'])
+        
+        # Handle different retriever types properly
+        chunks_with_scores = []  # Initialize with empty list to prevent None iteration
+        
+        try:
+            if rag_state.config['retrieval_method'] == 'advanced':
+                chunks_with_scores = retriever.retrieve_with_scores(
+                    rag_state.vector_store, query_embedding, query, top_k)  # Advanced retriever needs query text
+            elif rag_state.config['retrieval_method'] == 'hybrid':
+                chunks_with_scores = retriever.retrieve_with_scores(
+                    rag_state.vector_store, query_embedding, query, top_k)  # Hybrid retriever needs query text
+            else:
+                chunks_with_scores = retriever.retrieve_with_scores(
+                    rag_state.vector_store, query_embedding, top_k)  # Dense retriever only needs embedding
+            
+            # Ensure we have a valid list (not None)
+            if chunks_with_scores is None:
+                chunks_with_scores = []
+                logger.warning("Retriever returned None, using empty list")
+                
+        except Exception as retrieval_error:
+            logger.error(f"Retrieval failed: {str(retrieval_error)}")
+            chunks_with_scores = []  # Use empty list if retrieval fails
+        
+        # Update analytics
+        if rag_state.config.get('enable_analytics', True):
+            rag_state.analytics['total_queries_processed'] += 1
+            rag_state.analytics['last_activity_timestamp'] = str(datetime.now())
+        
+        # Validate and filter chunks for quality
+        validated_chunks = validate_chunk_relevance(chunks_with_scores, query)
         
         # Prepare response data
         response_data = {
-            'query': query,  # Original user query
-            'retrieved_chunks': [],  # List of retrieved chunks
-            'config_used': rag_state.config.copy()  # Configuration used
+            'chunks': [chunk for chunk, _ in validated_chunks],  # List of validated text chunks
+            'scores': [float(score) for _, score in validated_chunks],  # List of relevance scores
+            'num_results': len(validated_chunks),  # Number of results found
+            'retrieval_method': rag_state.config['retrieval_method'],  # Method used for retrieval
+            'generation_enabled': use_generation,  # Whether generation was requested
+            'query_processed': query,  # Echo back the processed query
+            'validation_applied': True,  # Indicate validation was applied
+            'original_results_count': len(chunks_with_scores)  # Original number before validation
         }
-        
-        # Format retrieved chunks with scores
-        for chunk, score in chunks_with_scores:
-            response_data['retrieved_chunks'].append({
-                'text': chunk,  # Chunk text content
-                'similarity_score': float(score)  # Similarity score
-            })
         
         # Generate AI response if requested and possible
         if use_generation and rag_state.config['generation_method'] != 'none':
             generator = get_generator()  # Get LLM generator
             
             if generator:
-                # Extract just the chunk texts for generation
-                chunk_texts = [chunk for chunk, _ in chunks_with_scores]  # Get chunk texts
+                # Extract just the chunk texts for generation (use validated chunks)
+                chunk_texts = [chunk for chunk, _ in validated_chunks]  # Get validated chunk texts
                 
                 # Generate response using LLM
                 generation_result = generator.generate_response(query, chunk_texts)  # Generate AI response
@@ -759,27 +975,163 @@ def list_documents():
     """Get list of all processed documents."""
     try:
         # Prepare document list with metadata
-        documents = []  # List to store document information
+        document_list = []  # List to store document information
         
-        for doc_id, doc_data in rag_state.documents.items():
-            documents.append({
-                'id': doc_id,  # Document ID
-                'chunk_count': doc_data['chunk_count'],  # Number of chunks
-                'text_preview': doc_data['text'][:100] + '...' if len(doc_data['text']) > 100 else doc_data['text'],  # Text preview
-                'filename': doc_data.get('filename', 'Text Input'),  # Filename or default
-                'file_type': doc_data.get('file_type', 'text'),  # File type or default
-                'processed_with': doc_data['processed_with']  # Processing configuration
-            })
+        for doc_id, doc_info in rag_state.documents.items():
+            document_summary = {
+                'id': doc_id,  # Document identifier
+                'chunk_count': doc_info['chunk_count'],  # Number of chunks created
+                'text_preview': doc_info['text'][:200] + "..." if len(doc_info['text']) > 200 else doc_info['text'],  # Text preview
+                'processed_with': doc_info['processed_with'],  # Processing configuration used
+                'size_bytes': len(doc_info['text'].encode('utf-8'))  # Document size in bytes
+            }
+            document_list.append(document_summary)  # Add to document list
         
-        return jsonify({
-            'documents': documents,  # List of documents
-            'total_count': len(documents)  # Total document count
-        })
+        # Prepare response with system statistics
+        response_data = {
+            'documents': document_list,  # List of processed documents
+            'total_documents': len(rag_state.documents),  # Total number of documents
+            'total_chunks': len(rag_state.all_chunks),  # Total number of chunks
+            'vector_store_count': rag_state.vector_store.get_document_count(),  # Vector store document count
+            'current_config': rag_state.config.copy()  # Current system configuration
+        }
+        
+        return jsonify(response_data), 200  # Return successful response
         
     except Exception as e:
-        # Handle document listing errors
-        logger.error(f"Document listing failed: {str(e)}")  # Log the error
-        return jsonify({'error': str(e)}), 500  # Return error response
+        # Handle errors in document listing
+        logger.error(f"Error listing documents: {str(e)}")  # Log error details
+        return jsonify({'error': f'Failed to list documents: {str(e)}'}), 500  # Return error response
+
+
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    """Get comprehensive system analytics and performance metrics."""
+    try:
+        # Update real-time metrics
+        memory_usage = rag_state.vector_store.get_memory_usage_estimate()  # Get current memory usage
+        
+        # Calculate performance metrics
+        health_score = 1.0  # Start with perfect health
+        
+        # Adjust health based on error rate
+        total_operations = (rag_state.analytics['total_documents_processed'] + 
+                          rag_state.analytics['total_queries_processed'])
+        if total_operations > 0:
+            error_rate = rag_state.analytics['error_count'] / total_operations
+            health_score -= min(error_rate * 2, 0.5)  # Reduce health by up to 50% based on errors
+        
+        # Update health score
+        rag_state.performance_metrics['system_health_score'] = max(0.0, health_score)
+        rag_state.performance_metrics['memory_usage'] = memory_usage
+        
+        # Prepare comprehensive analytics response
+        analytics_data = {
+            'system_overview': {
+                'total_documents_processed': rag_state.analytics['total_documents_processed'],
+                'total_queries_processed': rag_state.analytics['total_queries_processed'],
+                'total_chunks_created': rag_state.analytics['total_chunks_created'],
+                'error_count': rag_state.analytics['error_count'],
+                'last_activity': rag_state.analytics['last_activity_timestamp'],
+                'system_health_score': rag_state.performance_metrics['system_health_score']
+            },
+            'usage_statistics': {
+                'retrieval_methods': rag_state.analytics['retrieval_stats'],
+                'chunking_methods': rag_state.analytics['chunking_stats'],
+                'embedding_methods': rag_state.analytics['embedding_stats']
+            },
+            'performance_metrics': {
+                'memory_usage': rag_state.performance_metrics['memory_usage'],
+                'average_response_time': rag_state.analytics['average_response_time'],
+                'cache_hit_rate': rag_state.performance_metrics['cache_hit_rate']
+            },
+            'configuration': {
+                'current_config': rag_state.config.copy(),
+                'analytics_enabled': rag_state.config.get('enable_analytics', True),
+                'caching_enabled': rag_state.config.get('cache_embeddings', True)
+            },
+            'recommendations': []  # System optimization recommendations
+        }
+        
+        # Generate performance recommendations
+        recommendations = []
+        
+        # Memory usage recommendations
+        if memory_usage.get('estimate_mb', 0) > 1000:  # Over 1GB
+            recommendations.append({
+                'type': 'memory',
+                'priority': 'high',
+                'message': 'High memory usage detected. Consider using batch processing or reducing chunk sizes.',
+                'action': 'Increase batch_size in configuration or use smaller chunks'
+            })
+        
+        # Error rate recommendations
+        if total_operations > 10 and (rag_state.analytics['error_count'] / total_operations) > 0.1:
+            recommendations.append({
+                'type': 'reliability',
+                'priority': 'high',
+                'message': 'High error rate detected. Check system logs for issues.',
+                'action': 'Review error logs and consider adjusting configuration'
+            })
+        
+        # Usage pattern recommendations
+        retrieval_stats = rag_state.analytics['retrieval_stats']
+        if sum(retrieval_stats.values()) > 50:  # Significant usage
+            most_used = max(retrieval_stats.keys(), key=lambda k: retrieval_stats[k])
+            if most_used == 'dense' and retrieval_stats['dense'] > retrieval_stats['advanced'] * 2:
+                recommendations.append({
+                    'type': 'performance',
+                    'priority': 'medium',
+                    'message': 'Consider using advanced retrieval for better results.',
+                    'action': 'Switch retrieval_method to "advanced" in configuration'
+                })
+        
+        analytics_data['recommendations'] = recommendations
+        
+        return jsonify(analytics_data), 200  # Return analytics data
+        
+    except Exception as e:
+        # Handle errors in analytics generation
+        logger.error(f"Error generating analytics: {str(e)}")  # Log error details
+        return jsonify({'error': f'Failed to generate analytics: {str(e)}'}), 500  # Return error response
+
+
+@app.route('/api/analytics/reset', methods=['POST'])
+def reset_analytics():
+    """Reset analytics counters (useful for testing or clean start)."""
+    try:
+        # Reset all analytics counters
+        rag_state.analytics = {
+            'total_documents_processed': 0,
+            'total_queries_processed': 0,
+            'total_chunks_created': 0,
+            'average_response_time': 0.0,
+            'last_activity_timestamp': None,
+            'error_count': 0,
+            'retrieval_stats': {'dense': 0, 'hybrid': 0, 'advanced': 0},
+            'chunking_stats': {'fixed_length': 0, 'semantic': 0, 'adaptive': 0},
+            'embedding_stats': {'tfidf': 0, 'sentence_transformer': 0}
+        }
+        
+        # Reset performance metrics
+        rag_state.performance_metrics = {
+            'memory_usage': {},
+            'processing_times': [],
+            'cache_hit_rate': 0.0,
+            'system_health_score': 1.0
+        }
+        
+        logger.info("Analytics counters reset successfully")
+        
+        return jsonify({
+            'message': 'Analytics counters reset successfully',
+            'reset_timestamp': str(datetime.now())
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error resetting analytics: {str(e)}")
+        return jsonify({'error': f'Failed to reset analytics: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     """Run the Flask development server."""
