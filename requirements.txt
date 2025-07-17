@@ -5,10 +5,10 @@ sentence-transformers>=2.2.2,<3.0.0  # Sentence embeddings with version constrai
 numpy>=1.24.3,<1.27.0  # Numerical computing with compatibility range
 scikit-learn>=1.3.0,<1.5.0  # Machine learning library for TF-IDF
 
-# PyTorch ecosystem - Specific versions to avoid meta tensor issues
-torch>=2.0.0,<2.2.0  # PyTorch core - avoid latest versions with meta tensor issues
-torchvision>=0.15.0,<0.17.0  # Computer vision support (if needed)
-torchaudio>=2.0.0,<2.2.0  # Audio processing support (if needed)
+# PyTorch ecosystem - Updated for compatibility  
+torch>=2.2.0,<2.8.0  # PyTorch core
+torchvision>=0.17.0,<0.20.0  # Computer vision support (if needed)
+torchaudio>=2.2.0,<2.8.0  # Audio processing support (if needed)
 
 # Transformers with compatible version
 transformers>=4.30.0,<4.40.0  # Hugging Face transformers - compatible with torch versions
@@ -47,3 +47,6 @@ python-docx>=0.8.11,<1.0.0  # Word document support
 wheel>=0.40.0  # For proper package installation
 setuptools>=68.0.0  # Build tools
 packaging>=23.0  # Package version handling 
+
+# MCP (Model Context Protocol) Dependencies
+mcp>=1.11.0,<2.0.0  # Official Anthropic MCP Python SDK
