@@ -139,14 +139,9 @@ def main():
     print(f"Test Results: {tests_passed}/{total_tests} passed")
     
     if tests_passed == total_tests:
-        print("🎉 All tests passed! The RAG system is working correctly.")
-        print("\nYou can now:")
-        print("• Upload documents through the web interface at http://localhost:5000")
-        print("• Use the settings page at http://localhost:5000/settings")
-        print("• Check system health at http://localhost:5000/api/health")
+        print("System ready at: http://localhost:5000")
     else:
-        print("⚠ Some tests failed. Check the error messages above.")
-        print("The system may still work with reduced functionality.")
+        print("Some tests failed. The system may have reduced functionality.")
 
 
 if __name__ == '__main__':

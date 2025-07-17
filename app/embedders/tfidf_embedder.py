@@ -72,7 +72,7 @@ def create_tfidf_embeddings(texts: List[str]) -> np.ndarray:
             stop_words='english',  # Remove common English stop words
             lowercase=True,  # Convert all text to lowercase for consistency
             min_df=1,  # Include words that appear at least once
-            max_df=0.95,  # Exclude words that appear in >95% of documents
+            max_df=1.0,  # Include all words (fixed for small document sets)
             token_pattern=r'\b[a-zA-Z]{2,}\b'  # Only include alphabetic tokens with 2+ characters
         )
         
@@ -160,6 +160,7 @@ def create_single_tfidf_embedding(text: str) -> np.ndarray:
                 stop_words='english',  # Remove common English stop words
                 lowercase=True,  # Convert to lowercase for consistency
                 min_df=1,  # Include words that appear at least once
+                max_df=1.0,  # Include all words (consistent with main config)
                 token_pattern=r'\b[a-zA-Z]{2,}\b'  # Only alphabetic tokens with 2+ characters
             )
             _vectorizer.fit([clean_text])  # Train vectorizer on single text

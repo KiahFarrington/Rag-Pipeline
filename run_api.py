@@ -22,8 +22,7 @@ def main():
     
     # Check if we're in the right directory
     if not os.path.exists('app'):
-        print("❌ Error: Please run this script from the rag-system directory")  # Error if wrong directory
-        print("   Current directory:", os.getcwd())  # Show current directory
+        print("Error: Please run this script from the rag-system directory")
         return 1  # Exit with error code
     
     try:
@@ -33,7 +32,7 @@ def main():
         print("\nServer stopped by user")  # Graceful shutdown message
         return 0  # Exit successfully
     except Exception as e:
-        print(f"\n❌ Server error: {e}")  # Error message
+        print(f"Server error: {e}")
         return 1  # Exit with error code
 
 if __name__ == '__main__':

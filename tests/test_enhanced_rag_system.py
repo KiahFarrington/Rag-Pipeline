@@ -93,8 +93,7 @@ class RAGSystemTester:
     
     def run_all_tests(self) -> Dict[str, Any]:
         """Run comprehensive test suite and return results."""
-        print("🚀 Starting Enhanced RAG System Tests...")
-        print("=" * 60)
+        # Run comprehensive test suite
         
         # Run individual test suites
         chunking_results = self.test_chunking_methods()
@@ -123,7 +122,7 @@ class RAGSystemTester:
     
     def test_chunking_methods(self) -> Dict[str, Any]:
         """Test all chunking methods including the new adaptive chunker."""
-        print("📝 Testing Chunking Methods...")
+        # Test chunking methods
         
         results = {
             'fixed_length': self.test_fixed_length_chunking(),
@@ -131,7 +130,7 @@ class RAGSystemTester:
             'adaptive': self.test_adaptive_chunking()
         }
         
-        print(f"   ✅ Chunking tests completed")
+        # Chunking tests completed
         return results
     
     def test_fixed_length_chunking(self) -> Dict[str, Any]:
@@ -218,7 +217,7 @@ class RAGSystemTester:
     
     def test_embedding_methods(self) -> Dict[str, Any]:
         """Test embedding creation methods."""
-        print("🧠 Testing Embedding Methods...")
+        # Test embedding methods
         
         # Use adaptive chunking for consistent testing
         chunks = chunk_adaptively(self.sample_document, target_chunk_size=500)
@@ -228,7 +227,7 @@ class RAGSystemTester:
             'sentence_transformer': self.test_sentence_transformer_embeddings(chunks)
         }
         
-        print(f"   ✅ Embedding tests completed")
+        # Embedding tests completed
         return results
     
     def test_tfidf_embeddings(self, chunks: List[str]) -> Dict[str, Any]:
@@ -316,7 +315,7 @@ class RAGSystemTester:
     
     def test_retrieval_methods(self) -> Dict[str, Any]:
         """Test all retrieval methods including the new advanced retriever."""
-        print("🔍 Testing Retrieval Methods...")
+        # Test retrieval methods
         
         # Setup test environment
         chunks = chunk_adaptively(self.sample_document, target_chunk_size=400)
@@ -330,7 +329,7 @@ class RAGSystemTester:
             'advanced': self.test_advanced_retrieval(vector_store)
         }
         
-        print(f"   ✅ Retrieval tests completed")
+        # Retrieval tests completed
         return results
     
     def test_dense_retrieval(self, vector_store: FAISSVectorStore) -> Dict[str, Any]:
@@ -448,7 +447,7 @@ class RAGSystemTester:
     
     def test_performance_monitoring(self) -> Dict[str, Any]:
         """Test performance monitoring and analytics capabilities."""
-        print("📊 Testing Performance Monitoring...")
+        # Test performance monitoring
         
         try:
             # Create a vector store with monitoring
@@ -492,40 +491,35 @@ class RAGSystemTester:
     def generate_recommendations(self) -> List[str]:
         """Generate recommendations based on test results."""
         recommendations = [
-            "✅ Adaptive chunking provides optimal chunk sizes for your content",
-            "✅ Advanced retrieval improves result relevance with re-ranking",
-            "✅ Memory-efficient batch processing handles large datasets well",
-            "💡 Consider tuning diversity_factor for more varied results",
-            "💡 Enable query expansion for better recall on complex queries"
+            "Adaptive chunking provides optimal chunk sizes for your content",
+            "Advanced retrieval improves result relevance with re-ranking",
+            "Memory-efficient batch processing handles large datasets well",
+            "Consider tuning diversity_factor for more varied results",
+            "Enable query expansion for better recall on complex queries"
         ]
         return recommendations
     
     def print_test_summary(self, results: Dict[str, Any]):
-        """Print a comprehensive test summary."""
-        print("\n" + "=" * 60)
-        print("📋 TEST SUMMARY")
-        print("=" * 60)
+        """Print a simple test summary."""
+        failed_tests = []
         
+        # Collect any failed tests
         for category, result in results.items():
             if category in ['overall_score', 'recommendations']:
                 continue
-                
-            print(f"\n{category.upper()}:")
             if isinstance(result, dict):
                 for test, details in result.items():
-                    if isinstance(details, dict) and 'success' in details:
-                        status = "✅" if details['success'] else "❌"
-                        print(f"  {status} {test}")
-                        if not details['success'] and 'error' in details:
-                            print(f"      Error: {details['error']}")
+                    if isinstance(details, dict) and 'success' in details and not details['success']:
+                        failed_tests.append(f"{category}: {test}")
         
-        print(f"\n🎯 OVERALL SCORE: {results['overall_score']:.1%}")
+        # Only show failures or success message
+        if failed_tests:
+            print("Test failures detected:")
+            for test in failed_tests:
+                print(f"  - {test}")
         
-        print(f"\n💡 RECOMMENDATIONS:")
-        for rec in results['recommendations']:
-            print(f"  {rec}")
-        
-        print("\n" + "=" * 60)
+        if results['overall_score'] == 1.0:
+            print("System ready at: http://localhost:5000")
 
 
 def main():
