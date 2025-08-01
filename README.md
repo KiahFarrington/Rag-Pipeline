@@ -1,4 +1,4 @@
-# 🤖 Modular RAG System
+# Modular RAG System
 
 A complete Retrieval-Augmented Generation (RAG) system with a modern web interface. This system allows you to ingest documents, ask questions, and get AI-powered answers based on your documents.
 
@@ -32,7 +32,7 @@ rag-system/
 - **Extensibility**: Easy to add new algorithms and strategies
 - **Interface Consistency**: Common patterns across all modules
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Easy Setup (Recommended)
 1. **Double-click `setup.bat`** (Windows) 
@@ -59,13 +59,13 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-## 🎯 How to Use
+## How to Use
 
-1. **📝 Ingest Documents**: Paste text into the ingestion area and choose your chunking method
-2. **❓ Ask Questions**: Type questions about your ingested documents  
-3. **📊 System Status**: Check health and view stored chunks
+1. **Ingest Documents**: Paste text into the ingestion area and choose your chunking method
+2. **Ask Questions**: Type questions about your ingested documents  
+3. **System Status**: Check health and view stored chunks
 
-## 📁 File Structure
+## File Structure
 
 The project now includes convenient setup scripts:
 
