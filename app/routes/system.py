@@ -9,6 +9,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from app.services.state_service import rag_state
 from app.utils.embedding import test_embedding_method
+from app.utils.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ def get_config():
 
 
 @system_bp.route('/config', methods=['POST'])
+@require_api_key
 def update_config():
     """Update system configuration with user preferences."""
     try:
@@ -179,6 +181,7 @@ def get_analytics():
 
 
 @system_bp.route('/analytics/reset', methods=['POST'])
+@require_api_key
 def reset_analytics():
     """Reset analytics counters (useful for testing or clean start)."""
     try:

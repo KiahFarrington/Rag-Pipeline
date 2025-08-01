@@ -274,6 +274,10 @@
             }
         }
     </style>
+    <script>
+        // Injected by Flask
+        window.RAG_API_KEY = "{{ api_key }}";
+    </script>
 </head>
 <body>
     <div class="container">
@@ -422,8 +426,10 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
+                const apiKeyHeader = window.RAG_API_KEY ? { 'X-API-Key': window.RAG_API_KEY } : {};
                 const response = await fetch('/api/documents/upload', {
                     method: 'POST',
+                    headers: apiKeyHeader,
                     body: formData
                 });
 
@@ -461,11 +467,10 @@
             showMessage('Processing text...', 'loading', 'uploadResult');
             
             try {
+                const apiKeyHeader = window.RAG_API_KEY ? { 'X-API-Key': window.RAG_API_KEY } : {};
                 const response = await fetch('/api/documents/ingest', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { ...apiKeyHeader, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text })
                 });
 
@@ -503,11 +508,10 @@
             showMessage('Processing query...', 'loading', 'queryResult');
 
             try {
+                const apiKeyHeader = window.RAG_API_KEY ? { 'X-API-Key': window.RAG_API_KEY } : {};
                 const response = await fetch('/api/query', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { ...apiKeyHeader, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         query: query,
                         top_k: 5,

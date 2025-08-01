@@ -7,7 +7,7 @@ All business logic has been moved to dedicated services and routes.
 import os
 import logging
 import tempfile
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_cors import CORS
 
 # Import route blueprints
@@ -50,12 +50,14 @@ def too_large(e):
 @app.route('/')
 def index():
     """Serve the main web interface."""
-    return render_template('index.html')
+    api_key = os.environ.get('RAG_API_KEY', '')
+    return render_template('index.html', api_key=api_key)
 
 @app.route('/settings')
 def settings():
     """Serve the settings configuration page."""
-    return render_template('settings.html')
+    api_key = os.environ.get('RAG_API_KEY', '')
+    return render_template('settings.html', api_key=api_key)
 
 # Development server startup
 if __name__ == '__main__':

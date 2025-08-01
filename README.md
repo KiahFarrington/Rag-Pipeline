@@ -82,3 +82,40 @@ The project now includes convenient setup scripts:
 - **Augmented Generation**: Generate responses using retrieved context
 
 Each component follows the same pattern: simple functions with clear interfaces that can be easily swapped or extended. 
+
+## API Key Security
+
+**All sensitive API endpoints are protected by API key authentication.**
+
+- On startup, if you do not set a `RAG_API_KEY` environment variable, the server will generate a secure random API key and print it to the console.
+- To use your own key, set the environment variable before starting the server:
+  - On Linux/macOS:
+    ```sh
+    export RAG_API_KEY="your-very-secret-key"
+    python run_api.py
+    ```
+  - On Windows (PowerShell):
+    ```powershell
+    $env:RAG_API_KEY="your-very-secret-key"
+    python run_api.py
+    ```
+- All clients must include this header in requests to protected endpoints:
+  ```
+  X-API-Key: your-very-secret-key
+  ```
+- Example with curl:
+  ```sh
+  curl -H "X-API-Key: your-very-secret-key" http://localhost:5000/api/documents/upload
+  ```
+
+**If you do not set a key, the server will print the generated key on startup. Use this key in your API requests.**
+
+## Starting the Server
+
+1. (Optional) Set your API key as described above.
+2. Start the server:
+   ```sh
+   python run_api.py
+   ```
+3. The server will print the API key and usage instructions on startup.
+4. Access the web interface at [http://localhost:5000](http://localhost:5000) 

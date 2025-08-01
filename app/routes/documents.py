@@ -11,6 +11,7 @@ from app.services.state_service import rag_state
 from app.services.file_service import file_service
 from app.utils.chunking import create_chunks_with_method
 from app.utils.embedding import create_embeddings_with_method
+from app.utils.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ documents_bp = Blueprint('documents', __name__, url_prefix='/api/documents')
 
 
 @documents_bp.route('/upload', methods=['POST'])
+@require_api_key
 def upload_document():
     """Upload and process document files (.txt, .pdf, etc.)."""
     temp_file_path = None
@@ -132,6 +134,7 @@ def upload_document():
 
 
 @documents_bp.route('/ingest', methods=['POST'])
+@require_api_key
 def ingest_document():
     """Process and store a new document from text input."""
     try:
@@ -266,6 +269,7 @@ def get_document(doc_id):
 
 
 @documents_bp.route('/<doc_id>', methods=['DELETE'])
+@require_api_key
 def delete_document(doc_id):
     """Delete a specific document and its chunks."""
     try:

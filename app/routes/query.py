@@ -13,6 +13,7 @@ from app.retriever.dense_retriever import DenseRetriever
 from app.retriever.hybrid_retriever import HybridRetriever
 from app.retriever.advanced_retriever import AdvancedRetriever
 from app.augmented_generation.huggingface_generator import create_huggingface_generator
+from app.utils.auth import require_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ def validate_chunk_relevance(chunks_with_scores, query, min_score=0.1):
 
 
 @query_bp.route('/query', methods=['POST'])
+@require_api_key
 def query_documents():
     """Process user query and return AI-generated response with sources."""
     try:
@@ -244,6 +246,7 @@ def query_documents():
 
 
 @query_bp.route('/search', methods=['POST'])
+@require_api_key
 def search_chunks():
     """Simple search through document chunks without AI generation."""
     try:
@@ -311,6 +314,7 @@ def search_chunks():
 
 
 @query_bp.route('/similar', methods=['POST'])
+@require_api_key
 def find_similar():
     """Find chunks similar to provided text."""
     try:
